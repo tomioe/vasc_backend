@@ -1,0 +1,4 @@
+.vscode/
+
+scraper/node_modules/
+api/node_modules/
