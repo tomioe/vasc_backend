@@ -2,6 +2,8 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const util = require("util");
 
+const db_handler = require('../db/db_handler')
+
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
         "base_url": "https://www.damphuen.dk/e-cigaret",
@@ -33,7 +35,8 @@ function excludeElement(listOfElements, element, cheerio) {
 }
 
 async function paginationScrape(processCallback) {
-    const siteData = PAGINATION_VAPE_SHOPS["damphuen-ecig"];
+    const activeSite = "damphuen-ecig";
+    const siteData = PAGINATION_VAPE_SHOPS[activeSite];
     
     /* (1) Initial Scrape - Determine catalog pages */
     const initResponse = await axios(siteData["base_url"]);
@@ -77,22 +80,29 @@ async function paginationScrape(processCallback) {
                     const productName = $$(productElem).find(siteData["prod_name_element"]).text().trim();
                     const productPrice = $$(productElem).find(siteData["prod_price_element"]).text().trim();
                     const productLink = $$(productElem).find(siteData["prod_link_element"]).attr("href");
-                    products.push( {'name': productName, 'price': productPrice, 'link': productLink} )
+                    products.push( {name: productName, price: productPrice, link: productLink} )
                 });
                 if(catPagesProcessed++ == catPageLinks.size-1) {
                     /* (3) Storage / Return */
-                    processCallback(products);
+                    processCallback(activeSite, products);
                 }
             })
             .catch(console.error);
     });  
 };
 
-function processProducts(products) {
+function processProducts(vendor, products) {
     console.log(`Mined ${products.length} products in total.`);
     console.log(`\tFirst: "${products[0]["name"]}"`);
     console.log(`\tLast: "${products[products.length-1]["name"]}"`);
-    console.log("store in db")
+    
+    
+    products.forEach( item => {
+        item.vendor = vendor;
+        db_handler.add(item);
+    })
+    
+    console.log("stored in db")
 }
 
 paginationScrape(processProducts);      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
