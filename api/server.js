@@ -1,6 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const port = 3000;
+const port = 4000;
 
 const app = express();
 app.use(bodyParser.json());
@@ -9,7 +9,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const db_handler = require("../db/db_handler")
 
-//Catches requests made to localhost:3000/search
+// Search for a product, with a
 app.get('/search', (req, res) => {
     let urlQuery = req.query.q;
     if(urlQuery) {
@@ -26,6 +26,11 @@ app.get('/search', (req, res) => {
     } else {
         res.status(400).send("Invalid query.");
     }
+});
+
+// Serve product information
+app.get('/product/:id', (req, res) => {
+    res.status(501).send("TBD.");
 });
 
 //Catches requests made to localhost:3000/
