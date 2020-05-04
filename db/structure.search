@@ -1,0 +1,23 @@
+{
+    [
+        {
+            'name': XXXX,
+            'id': XXXX,
+            'price': XXXX,
+            'id': XXXX
+        },
+        {
+            'name': XXXX,
+            'id': XXXX,
+            'price': XXXX,
+            'id': XXXX
+        },
+        {
+            'name': XXXX,
+            'id': XXXX,
+            'price': XXXX,
+            'id': XXXX
+        }
+    ],
+    'moreResults': str
+}

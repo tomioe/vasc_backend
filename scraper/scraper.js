@@ -23,6 +23,7 @@ const PAGINATION_VAPE_SHOPS = {
 function excludeElement(listOfElements, element, cheerio) {
     const $ = cheerio;
     var retVal = false;
+    // TODO: Change to 'some'/'every' - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
     listOfElements.forEach(exclude => {
         // some sites store it in the "li" element, others in the "a" element
         if ($(element).hasClass(exclude)) {
@@ -96,12 +97,20 @@ function processProducts(vendor, products) {
     console.log(`\tFirst: "${products[0]["name"]}"`);
     console.log(`\tLast: "${products[products.length-1]["name"]}"`);
     
-    
+    /*
+    rework to structure:
+        {
+            ..,
+            prices: [
+                {vendor: 'asdf', price: '1234', link: 'http'}
+            ]
+        }
+    */
     products.forEach( item => {
-        item.vendor = vendor;
-        db_handler.add(item);
+        //item.vendor = vendor;
+        //db_handler.add(item);
     })
-    
+
     console.log("stored in db")
 }
 

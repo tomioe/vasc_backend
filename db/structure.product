@@ -1,0 +1,7 @@
+{
+    name: 'asdf',
+    prices: [
+        {vendor: 'asdf', price: '1234', link: 'http'},
+        {vendor: 'sadaf', price: '1234', link: 'http'},
+    ]
+}
