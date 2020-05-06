@@ -2,7 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const util = require("util");
 
-const db_handler = require('../db/db_handler')
+const db_handler = require("../db/db_handler")
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
@@ -23,7 +23,7 @@ const PAGINATION_VAPE_SHOPS = {
 function excludeElement(listOfElements, element, cheerio) {
     const $ = cheerio;
     var retVal = false;
-    // TODO: Change to 'some'/'every' - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
+    // TODO: Change to "some"/"every" - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
     listOfElements.forEach(exclude => {
         // some sites store it in the "li" element, others in the "a" element
         if ($(element).hasClass(exclude)) {
@@ -96,16 +96,8 @@ function processProducts(vendor, products) {
     console.log(`Mined ${products.length} products in total.`);
     console.log(`\tFirst: "${products[0]["name"]}"`);
     console.log(`\tLast: "${products[products.length-1]["name"]}"`);
-    
-    /*
-    rework to structure:
-        {
-            ..,
-            prices: [
-                {vendor: 'asdf', price: '1234', link: 'http'}
-            ]
-        }
-    */
+
+
     products.forEach( item => {
         //item.vendor = vendor;
         //db_handler.add(item);

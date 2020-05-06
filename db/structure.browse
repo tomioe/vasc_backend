@@ -1,23 +1,24 @@
 {
-    [
+    'products': [
         {
             'name': XXXX,
             'id': XXXX,
             'price': XXXX,
-            'id': XXXX
+            'image_id': XXXX
         },
         {
             'name': XXXX,
             'id': XXXX,
             'price': XXXX,
-            'id': XXXX
+            'image_id': XXXX
         },
         {
             'name': XXXX,
             'id': XXXX,
             'price': XXXX,
-            'id': XXXX
+            'image_id': XXXX
         }
     ],
-    'moreResults': str
+    'moreResults': str,
+    'offset': int
 }

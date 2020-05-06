@@ -14,10 +14,7 @@ const stringSimilarity = require('string-similarity');
 
 /*
     search(:string)
-        return 20 of matching string with product name,
-            see 'structure.search'
-
-        TODO: can we get mongoDB to sort? 
+        return all products matching the string
 
     product(:id)
         return single product matching the ID
@@ -55,9 +52,9 @@ module.exports = {
         })
     },
     add: productObject => {
-        // 1. search all db items
-        // 2. compare string-similarity on each result to projetObject["name"]
-        // 3. if >90%, add price to this item
+        // 1. Search all db items
+        // 2. Compare string-similarity on each result to projetObject["name"]
+        // 3. If >90%, add price to this item
         // 4. Otherwise, add new product
 
         console.log(`Searching DB for matches...`);
@@ -66,12 +63,12 @@ module.exports = {
                 {},
                 { projection: { _id: 0 } }
             )
-            .toArray(function (err, results) {
+            .toArray(function (err, currentProducts) {
                 if (err) throw err;
-                var currentProducts = [];
-                results.forEach(item => {
-                    currentProducts.push(item)
-                });
+                // var currentProducts = [];
+                // results.forEach(item => {
+                //     currentProducts.push(item)
+                // });
                 var productPriceObject = {
                     vendor: productObject["vendor"],
                     price: productObject["price"],
@@ -82,7 +79,7 @@ module.exports = {
                     let currentProductNames = currentProducts.map(product => product.name);
                     let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames)
                     // TODO: Tune rating threshold
-                    if (similarity.bestMatch.rating > 0.8) {
+                    if (similarity.bestMatch.rating > 0.9) {
                         console.log("Found match with DB item '" + currentProducts[similarity.bestMatchIndex].name + "' and '"+  productObject.name +"', updating price.");
                         // extract the matched product's prices
                         let dbPricesToBeUpdated = currentProducts[similarity.bestMatchIndex].prices;
@@ -90,7 +87,9 @@ module.exports = {
                         let updateIndex = dbPricesToBeUpdated.findIndex(priceObject => {
                             return priceObject.vendor === productObject.vendor;
                         })
-                        // TODO: Check if price is the same? Is update necessary?
+                        // TODO: What if vendor isn't present?  
+
+                        // TODO: Check if price is the same? Is update then necessary?
 
                         // update that specific index with new price object
                         dbPricesToBeUpdated[updateIndex] = productPriceObject;
