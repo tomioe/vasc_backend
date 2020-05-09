@@ -1,23 +1,24 @@
-const db_handler = require('./db_handler')
+const db_interface = require('./db_interface')
 
 const testData = [
     {
         "name": "Mod1",
-        "price": "150",
+        "price": "333",
         "link": "http://test1.com/product1",
         "vendor": "Test1 Vendor"
     },
     {
         "name": "Mod2",
-        "price": "300",
+        "price": "222",
         "link": "http://test1.com/productX",
         "vendor": "Test1 Vendor"
     }
 ]
-db_handler.start()
+db_interface
+    .open()
     .then((client_db) => {
         testData.forEach( product => {
-            db_handler.add(product)
+            db_interface.add(product)
         })
         return client_db;
     })

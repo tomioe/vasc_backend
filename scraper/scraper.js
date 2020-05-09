@@ -2,7 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const util = require("util");
 
-const db_handler = require("../db/db_handler")
+const db_interface = require("../db/db_interface")
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
@@ -97,13 +97,23 @@ function processProducts(vendor, products) {
     console.log(`\tFirst: "${products[0]["name"]}"`);
     console.log(`\tLast: "${products[products.length-1]["name"]}"`);
 
+    db_interface
+        .open()
+        .then((client_db) => {
+            products.forEach( item => {
+                item.vendor = vendor; 
+                db_interface.add(item);
+            })
+            setTimeout( () => {
+                console.log("[Scraper] Closing DB connection.")
+                client_db.close();
+            }, 5000);
+        })
+        .catch( e => {
+            console.error(e);
+        });
 
-    products.forEach( item => {
-        //item.vendor = vendor;
-        //db_handler.add(item);
-    })
-
-    console.log("stored in db")
+    console.log("[Scraper] Stored products in DB.")
 }
 
 paginationScrape(processProducts);      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
