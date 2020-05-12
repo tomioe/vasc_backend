@@ -16,8 +16,10 @@ const PAGINATION_VAPE_SHOPS = {
         "prod_list_element": ".category-products > .listProduct",
         "prod_name_element": ".listProductContent > .listProductName",
         "prod_price_element": ".listProductContent > .listProductPrice",
-        "prod_link_element": ".listProductContent > .listProductName > a"
+        "prod_link_element": ".listProductContent > .listProductName > a",
+        "prod_sik_element": "" /* TBD */
     }
+    // TODO: Tanks fra damphuen
 };
 
 function excludeElement(listOfElements, element, cheerio) {

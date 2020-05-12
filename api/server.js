@@ -1,9 +1,9 @@
 const express = require("express");
-const bodyParser = require("body-parser");
-var cors = require('cors');
-
 const crypto = require('crypto')
-const shaOne = crypto.createHash('sha1')
+const cors = require('cors');
+const bodyParser = require("body-parser");
+
+
 
 const app = express();
 app.use(bodyParser.json());
@@ -35,7 +35,6 @@ app.get('/search', (req, res) => {
 
 // Serve product information
 app.get('/product/:id', (req, res) => {
-
     if(req.params.id) {
         db_interface
             .search(req.params.id, false)
@@ -53,8 +52,9 @@ app.get('/product/:id', (req, res) => {
 
 //Catches requests made to / [root]
 app.get('/', (req, res) => {
-	shaOne.update(new String(new Date().getTime()) + new String(port));
-	res.json(shaOne.digest("hex"));
+	const hashFunction = crypto.createHash('sha256')
+	hashFunction.update(new String(new Date().getTime()) + new String(port));
+	res.send(hashFunction.digest("hex"));
 });
 
 // Start the Express server and open database connection.

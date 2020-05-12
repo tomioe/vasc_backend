@@ -56,6 +56,28 @@ module.exports = {
         })
     },
     add: productObject => {
+        // New SIK method:
+        /*
+            A product is added...    
+        
+            Scenario 1.
+                * It has SIK scraped
+                * An item in the DB has the same SIK
+                => Update the price (either add or update by vendor ID)
+            
+            Scenario 2. 
+                * It has SIK scraped
+                * No item in DB with same SIK
+                => Add new product
+
+            Scenario 3.
+                * No SIK has been scraped
+                * Look up in the Raw Data (CSV), can we get a 80% match on name?
+                * Yes (over 80%): Same as scenario 1    
+                * No (under 80%): Same as scenario 2    [GeekVape Frenzy from Damphuen]
+        */
+
+        // Old method:
         // 1. Search all db items
         // 2. Compare string-similarity on each result to projetObject["name"]
         // 3. If >90%, add price to this item
@@ -74,6 +96,9 @@ module.exports = {
                     price: productObject["price"],
                     link: productObject["link"]
                 };
+                // TODO: Read SIK raw-data in a key-value structure
+
+                // TODO: When adding, compare to SIK in DB already
                 if (currentProducts.length > 0) {
                     console.log('Searching for match...');
                     let currentProductNames = currentProducts.map(product => product.name);
@@ -102,7 +127,10 @@ module.exports = {
                         // TODO: Check if price is the same? Is update then necessary?
 
                         
+                        
                         // update databases' matched product with the updated price list
+                        // TODO: maybe we can do it better?
+                        // https://stackoverflow.com/questions/31120111/mongodb-find-and-then-update
                         collection.updateOne(
                             { name: currentProducts[similarity.bestMatchIndex].name },
                             {
@@ -120,6 +148,7 @@ module.exports = {
                     }
                     if(matchInDB) return;
                 }
+                // TODO: If no match, but SIK number in scraped data then add by SIK
                 // either there's no match, or we have no items in DB, either way...
                 console.log("No item or match in DB, adding new product...")
                 const newProductObject = {
