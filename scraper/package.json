@@ -13,6 +13,8 @@
     "axios": "^0.19.2",
     "bottleneck": "^2.19.5",
     "cheerio": "^1.0.0-rc.3",
+    "cwait": "^1.1.2",
+    "file-extension": "^4.0.5",
     "puppeteer": "^3.0.2"
   }
 }

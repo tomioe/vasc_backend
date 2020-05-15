@@ -1,7 +1,8 @@
 {
-    'SIK': BBBB,
     'name': XXXX,
     'price': YYYY,
+    'SIK': BBBB,
     'link': ZZZZ,
+    'imageName': CCCC,
     'vendor': AAAA
 }

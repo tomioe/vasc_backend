@@ -1,12 +1,17 @@
+const fs = require('fs')  
+const path = require('path')  
 const axios = require("axios");
 const crypto = require('crypto')
 const cheerio = require("cheerio");
-const fileDownload = require('js-file-download');
+const { TaskQueue } = require('cwait');
+const fileExtension = require('file-extension'); 
+
 
 const util = require("util");
 
 const databaseInterface = require("../db/db_interface");
-const IMAGE_STORE_PATH = "../../store/";
+const IMAGE_STORE_PATH = "../store/";
+const MAX_SIMULTANEOUS_DOWNLOADS = 10;
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
@@ -43,7 +48,7 @@ function excludeElement(listOfElements, element, cheerio) {
     return retVal;
 }
 
-async function paginationScrape(processCallback) {
+async function paginationScrape() {
     const activeSite = "damphuen-ecig";
     const siteData = PAGINATION_VAPE_SHOPS[activeSite];
     
@@ -81,7 +86,6 @@ async function paginationScrape(processCallback) {
     let productLinks = [];
     try {
         let catalogResponses = await axios.all(catPageLinks);
-        console.log(`${productLinks.length}`);
         catalogResponses.forEach( catResp => {
             const $$ = cheerio.load(catResp.data);
             const productElems = $$(siteData["cat_list_element"]);
@@ -91,20 +95,21 @@ async function paginationScrape(processCallback) {
             });
         });
 
+        productLinks = productLinks.slice(200);
     } catch (error) {
-        console.error("error during catalog page scrape");
+        console.error("[Scraper] Error during catalog page scrape: " + error);
     }
     
     /* (3) Using the product link, we now extract the Product Name, SIK ID, Price and Image from each page  */
     // RegEx for SIK ID: /\d{5}-\d{2}-\d{5}/g
-    // If regex matches more than one group, then discard the result
-    // TODO: Images: https://stackoverflow.com/questions/41938718/how-to-download-files-using-axios
-
+    
+    // rate limit:  https://github.com/axios/axios/issues/1010#issuecomment-326172188
+    // or: https://stackoverflow.com/questions/55374755/node-js-axios-download-file-and-writefile
     let products = []
     let sikRe = /\d{5}-\d{2}-\d{5}/g
-    productLinks = productLinks.map( prodLink => axios.get(prodLink));
     try {
-        let productResults = await axios.all(productLinks);
+        const queue = new TaskQueue(Promise, MAX_SIMULTANEOUS_DOWNLOADS);
+        const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
         productResults.forEach( prodRes => {
             const $$ = cheerio.load(prodRes.data);
             let productPrice =  $$(siteData["prod_price_element"]);
@@ -118,15 +123,10 @@ async function paginationScrape(processCallback) {
                 }
                 let productImageElem = $$(siteData["prod_img_element"]);
                 
-                // create helper function
-                // https://futurestud.io/tutorials/download-files-images-with-axios-in-node-js
-                // https://stackoverflow.com/questions/55374755/node-js-axios-download-file-and-writefile
-                // const productImageHash = getImageHash(url);
                 let productImageHash = "none";
                 if (productImageElem && productImageElem.length == 1) {
-                    let productImageUrl = productImageElem.attr("src");
-                    const hashFunction = crypto.createHash('sha256')
-                    productImageHash = hashFunction.update(productImageUrl);
+                    const productImageUrl = productImageElem.attr("src");
+                    const productImageHash = getImageHash(productImageUrl);
                 }
 
                 products.push(
@@ -135,22 +135,17 @@ async function paginationScrape(processCallback) {
                         price: productPrice,
                         sik: productSik,
                         link: prodRes.config.url,
-                        imageFile: productImageHash,
+                        imageName: productImageHash,
                         vendor: activeSite
                     }
                 )
             }
         })
-        console.log(`we have ${productResults.length} results`);
     } catch (error) {
-        console.error("error during product page scrape: " + error)
+        console.error("[Scraper] Error during product page scrape: " + error);
     }
     
-    console.log("...it!")
-};
-
-function processProducts(products) {
-    console.log(`Mined ${products.length} products in total.`);
+    console.log(`[Scraper] Mined ${products.length} products in total.`);
     console.log(`\tFirst: "${products[0]["name"]}"`);
     console.log(`\tLast: "${products[products.length-1]["name"]}"`);
 
@@ -158,9 +153,8 @@ function processProducts(products) {
         .open()
         .then((client_db) => {
             products.forEach( item => {
-                item.vendor = vendor; 
-                databaseInterface.add(item);
-            })
+                //databaseInterface.add(item);
+            });
             setTimeout( () => {
                 console.log("[Scraper] Closing DB connection.")
                 client_db.close();
@@ -169,11 +163,27 @@ function processProducts(products) {
         .catch( e => {
             console.error(e);
         });
+};
 
-    console.log("[Scraper] Stored products in DB.")
+function getImageHash(imageUrl) {
+    const hashFunction = crypto.createHash('sha256')
+    const hashFileName = hashFunction.update(imageUrl).digest("hex");
+    let ext = fileExtension(imageUrl); // use library to determine file extension (defaults to blank)
+    const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName + "." + ext);
+    const writer = fs.createWriteStream(output_path);
+    axios(imageUrl, {
+        method: 'GET',
+        responseType: 'stream'
+    }).then( res => {
+        res.data.pipe(writer);
+    }).catch( err => {
+        console.error("error during image download: " + err);
+    })
+    
+    return hashFileName;
 }
 
-paginationScrape(processProducts);      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
+paginationScrape();      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
 // singlePageScrape(processProducts);   // variation of paginationScrape() (or vice-versa) [dansk damp, pink-mule, esug]
 
 
