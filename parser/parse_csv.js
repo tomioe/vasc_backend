@@ -15,14 +15,14 @@ module.exports = {
     parseSIK: () => {
         let SIKtable = {};
         var parsedCsv = parse(fs.readFileSync(CSV_SIK_PATH_1, 'utf-8'), {
-                columns: true,
-                skip_empty_lines: true
+            columns: true,
+            skip_empty_lines: true
         });
         
         parsedCsv.forEach(csvLine => {
             const productName = csvLine["produkt_mrke_produkt_navn"].trim();
             const sikID = csvLine["produkt_id"].trim();
-            SIKtable[productName] = sikID;
+            SIKtable[sikID] = productName;
         })
         return SIKtable;
     }
