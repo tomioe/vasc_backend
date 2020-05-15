@@ -1,6 +1,6 @@
 .vscode/
 
 scraper/node_modules/
-paser/node_modules/
+parser/node_modules/
 api/node_modules/
 db/node_modules/
