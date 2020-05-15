@@ -1,9 +1,10 @@
 {
     _id: [mongoDB],
-    name: 'asdf',
+    name: 'AAAA',
+    sik: '1234',
     prices: [
         {vendor: 'asdf', price: '1234', link: 'http'},
         {vendor: 'sadaf', price: '1234', link: 'http'},
     ],
-    image_id: [sha1(name + image_filename)]
+    image_id: [sha256(image_filename)]
 }

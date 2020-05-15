@@ -1,32 +1,68 @@
+const stringSimilarity = require('string-similarity');
 const MongoClient = require("mongodb").MongoClient;
 const ObjectId = require("mongodb").ObjectID;
 
-const CONNECTION_URL = "mongodb://127.0.0.1:27017/";
-const DATABASE_NAME = "vape_scrape";
-//const DATABASE_NAME = "vape_scrape_dummy";
-const COLLECTION_NAME = "products";
-//const COLLECTION_NAME = "dummy_data";
-var database, collection;
-
 const util = require('util')
 
-const stringSimilarity = require('string-similarity');
+const csvParser = require('../parser/parse_csv')
 
-/*
-    search(:string)
-        return all products matching the string
+const CONNECTION_URL = "mongodb://127.0.0.1:27017/";
+//const DATABASE_NAME = "vape_scrape";
+const DATABASE_NAME = "vape_scrape_dummy";
+//const COLLECTION_NAME = "products";
+const COLLECTION_NAME = "dummy_data";
+var database, collection, sikTable;
 
-    product(:id)
-        return single product matching the ID
-            see 'structure.product'
+// helper function to insert a new product in the DB
+async function insertNewProduct(productObject) {
+    const productPriceObject = {
+        "vendor": productObject["vendor"],
+        "price": productObject["price"],
+        "link": productObject["link"]
+    }
+    const newProductObject = {
+        name: productObject["name"],
+        prices: [
+            productPriceObject
+        ],
+        imageName: productObject["imageName"]
+    };
+    if (productObject["sik"]) {
+        newProductObject["sik"] = productObject["sik"];
+    }
+    await collection.insertOne(newProductObject, (err, res) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+    })
+    return productObject;
+}
 
-        TODO: copy of search
-    
-*/
+// helper function to update the "prices" object
+function updatePrices(productPrices, newPricesObject) {
+    // console.log("\tAdding new product.")
+    let updatedPrices = productPrices;
+
+    // Find the index in price array matching the current product's vendor
+    let updateIndex = productPrices.findIndex(priceEntry => {
+        return priceEntry["vendor"] === newPricesObject["vendor"];
+    })
+
+    if (updateIndex === -1) {
+        // Product is present in DB, but lacks the new vendor 
+        updatedPrices.push(newPricesObject);
+    } else {
+        // Product is present in DB, update the specific vendor's previous price
+        updatedPrices[updateIndex] = newPricesObject;
+    }
+    return updatedPrices;
+}
 
 module.exports = {
     open: () => {
         return new Promise((resolve, reject) => {
+            sikTable = csvParser.parseSIK();
             MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true }, (error, client) => {
                 if (error) {
                     console.error(error);
@@ -44,7 +80,7 @@ module.exports = {
             let findQuery = searchByName ? { "name": { $regex: new RegExp(query, "i") } } : ObjectId(query)
 
             collection
-                .find( 
+                .find(
                     findQuery
                 )
                 .limit(20)
@@ -74,96 +110,124 @@ module.exports = {
                 * No SIK has been scraped
                 * Look up in the Raw Data (CSV), can we get a 80% match on name?
                 * Yes (over 80%): Same as scenario 1    
-                * No (under 80%): Same as scenario 2    [GeekVape Frenzy from Damphuen]
+                * No (under 80%): 
+                    * Search the whole DB for 80% match on string name:
+                        * Over 80%: Scenario 1
+                        * Under 80% Scenario 2    
         */
 
-        // Old method:
-        // 1. Search all db items
-        // 2. Compare string-similarity on each result to projetObject["name"]
-        // 3. If >90%, add price to this item
-        // 4. Otherwise, add new product
+        return new Promise((resolve, reject) => {
+            // console.log(`Searching DB for matches...`);
+            const productSIK = productObject["sik"];
+            const productPriceObject = {
+                vendor: productObject["vendor"],
+                price: productObject["price"],
+                link: productObject["link"]
+            };
+            if (productSIK && productSIK.length > 0) {
+                // we have a SIK
+                // console.log(`We have a SIK: ${productSIK}`);
+                collection
+                    .find(
+                        { "sik": productSIK }
+                    )
+                    .toArray((err, matchingSIKProduct) => {
+                        if (err) throw err;
+                        //console.log(`\tgot ${matchingSIKProduct.length} products`);
+                        if (matchingSIKProduct.length == 1) {
+                            // console.log("\tScenario 1, We found an item in the database")
+                            let databaseUpdate = {};
+                            let foundProduct = matchingSIKProduct[0];
 
-        console.log(`Searching DB for matches...`);
-        collection
-            .find(
-                {},
-                { projection: { _id: 0 } }
-            )
-            .toArray(function (err, currentProducts) {
-                if (err) throw err;
-                var productPriceObject = {
-                    vendor: productObject["vendor"],
-                    price: productObject["price"],
-                    link: productObject["link"]
-                };
-                // TODO: Read SIK raw-data in a key-value structure
+                            // Use a helper function to determine the new "prices" object
+                            let oldPrices = foundProduct["prices"];
+                            databaseUpdate["prices"] = updatePrices(oldPrices, productPriceObject);
 
-                // TODO: When adding, compare to SIK in DB already
-                if (currentProducts.length > 0) {
-                    console.log('Searching for match...');
-                    let currentProductNames = currentProducts.map(product => product.name);
-                    let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
-                    let matchInDB = false;
-                    // TODO: Tune rating threshold
-                    if (similarity.bestMatch.rating > 0.9) {
-                        matchInDB = true;
-                        console.log("Found match with DB item '" + currentProducts[similarity.bestMatchIndex].name + "' and '"+  productObject.name +"', updating price.");
-                        // extract the matched product's prices
-                        let dbPricesToBeUpdated = currentProducts[similarity.bestMatchIndex].prices;
-
-                        // Find the index in price array matching the current product's vendor
-                        let updateIndex = dbPricesToBeUpdated.findIndex(priceObject => {
-                            return priceObject.vendor === productObject.vendor;
-                        })
-                        
-                        if(updateIndex === -1) {
-                            // Product is present in DB, but lacks the new vendor 
-                            dbPricesToBeUpdated.push(productPriceObject);
-                        } else {
-                            // Product is present in DB, update the specific vendor's previous price
-                            dbPricesToBeUpdated[updateIndex] = productPriceObject;
-                        }
-                        
-                        // TODO: Check if price is the same? Is update then necessary?
-
-                        
-                        
-                        // update databases' matched product with the updated price list
-                        // TODO: maybe we can do it better?
-                        // https://stackoverflow.com/questions/31120111/mongodb-find-and-then-update
-                        collection.updateOne(
-                            { name: currentProducts[similarity.bestMatchIndex].name },
-                            {
-                                $set: { prices: dbPricesToBeUpdated },
-                                $currentDate: { lastModified: true }
-                            },
-                            (err, res) => {
-                                if (err) {
-                                    console.error(err);
-                                    return;
-                                }
-                                console.log("Updated product price.")
+                            // if matching product does not have an image, and new one does, then update with new
+                            // TODO: Move to helper function 
+                            if (foundProduct["imageName"] === "none" && productObject["imageName"] != "none") {
+                                databaseUpdate["imageName"] = productObject["imageName"];
                             }
-                        )
-                    }
-                    if(matchInDB) return;
-                }
-                // TODO: If no match, but SIK number in scraped data then add by SIK
-                // either there's no match, or we have no items in DB, either way...
-                console.log("No item or match in DB, adding new product...")
-                const newProductObject = {
-                    name: productObject["name"],
-                    prices: [
-                        productPriceObject
-                    ]
-                };
-                collection.insertOne(newProductObject, (err, res) => {
-                    if (err) {
-                        console.error(error);
-                        return;
-                    }
-                    console.log("Inserted new product.");
-                })
-            });
+
+                            collection.updateOne(
+                                { sik: productSIK },
+                                {
+                                    $set: databaseUpdate,
+                                    $currentDate: { lastModified: true }
+                                },
+                                (err, res) => {
+                                    if (err) {
+                                        console.error(err);
+                                        reject(err);
+                                    }
+                                    // console.log("\tUpdated product price.")
+                                    resolve(res);
+                                }
+                            )
+
+                        } else {
+                            // console.log("\tScenario 2, No items with SIK in the database")
+                            let updatedObject = insertNewProduct(productObject);
+                            resolve(updatedObject);
+                        }
+                    });
+            } else {
+                // console.log("\tNo SIK, follow scenario 3")
+                collection
+                    .find(
+                        {},
+                        { projection: { _id: 0 } }
+                    )
+                    .toArray(function (err, currentProducts) {
+                        if (err) reject(err);
+                        if (currentProducts.length > 0) {
+                            // console.log('\tSearching for name match...');
+                            let currentProductNames = currentProducts.map(product => product.name);
+                            let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
+                            let matchInDB = false;
+                            // TODO: Tune rating threshold
+                            if (similarity.bestMatch.rating > 0.8) {
+                                matchInDB = true;
+                                // console.log("\tFound name match with DB item '" + currentProducts[similarity.bestMatchIndex].name + "' and '" + productObject.name + "', updating price.");
+                                let databaseUpdate = {};
+                                let foundProduct = currentProducts[similarity.bestMatchIndex];
+                                // Use helper function to generate the new "prices" object
+                                let newPrices = updatePrices(foundProduct["prices"], productPriceObject);
+                                
+                                // if matching product does not have an image, and new one does, then update with new
+                                // TODO: Move to helper function 
+                                if (foundProduct["imageName"] === "none" && productObject["imageName"] != "none") {
+                                    databaseUpdate["imageName"] = productObject["imageName"];
+                                }
+                                // update databases' matched product with the updated price list
+                                // TODO: maybe we can do it better?: https://stackoverflow.com/questions/31120111/mongodb-find-and-then-update
+                                // TODO: Check if price is the same? Is update then necessary?
+                                collection.updateOne(
+                                    { name: currentProducts[similarity.bestMatchIndex].name },
+                                    {
+                                        $set: databaseUpdate,
+                                        $currentDate: { lastModified: true }
+                                    },
+                                    (err, res) => {
+                                        if (err) {
+                                            console.error(err);
+                                            return;
+                                        }
+                                        // console.log("\tUpdated product price.")
+                                    }
+                                )
+                                productObject["prices"] = newPrices;
+                                resolve(productObject);
+                            }
+                            if (matchInDB) return;
+                        }
+                        // TODO: If no match, but SIK number in scraped data then add by SIK
+                        // either there's no match, or we have no items in DB, either way...
+                        // console.log("\tNo item or match in DB, adding new product...")
+                        let newProudct = insertNewProduct(productObject);
+                        resolve(newProudct);
+                    });
+            }
+        })
     }
 };
