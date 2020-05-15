@@ -126,7 +126,6 @@ module.exports = {
             };
             if (productSIK && productSIK.length > 0) {
                 // we have a SIK
-                // console.log(`We have a SIK: ${productSIK}`);
                 collection
                     .find(
                         { "sik": productSIK }
@@ -148,6 +147,11 @@ module.exports = {
                             if (foundProduct["imageName"] === "none" && productObject["imageName"] != "none") {
                                 databaseUpdate["imageName"] = productObject["imageName"];
                             }
+
+                            // If there's a SIK match, we should use the SIK List's name for the object 
+                            // if(sikTable.hasOwnProperty(productSIK)) {
+                            //     databaseUpdate["name"] = sikTable[productSIK];
+                            // }
 
                             collection.updateOne(
                                 { sik: productSIK },
