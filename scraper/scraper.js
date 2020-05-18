@@ -9,12 +9,12 @@ const fileExtension = require('file-extension');
 
 const util = require("util");
 
-const __BASE = "/dev/vasc/"
+const __BASE = "/dev/vasc"
 
 const DB_PATH = path.join(__BASE, "/backend/DB")
 const databaseInterface = require(path.join(DB_PATH, "db_interface"))
 
-const IMAGE_STORE_PATH = path.join(__BASE, "/backend/store")
+const IMAGE_STORE_PATH = path.join(__BASE, "/store")
 const MAX_SIMULTANEOUS_DOWNLOADS = 5;
 
 const PAGINATION_VAPE_SHOPS = {
@@ -42,7 +42,15 @@ function excludeElement(listOfElements, element, cheerio) {
     const $ = cheerio;
     var retVal = false;
     // TODO: Change to "some"/"every" - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
-    listOfElements.forEach(exclude => {
+    for(const listElement in listOfElements) {
+        if ($(element).hasClass(exclude)) {
+            return true;
+        } else if($(element).find("a").hasClass(exclude)) {
+            return true;
+        }
+    }
+    return false;
+    /* listOfElements.forEach(exclude => {
         // some sites store it in the "li" element, others in the "a" element
         if ($(element).hasClass(exclude)) {
             retVal = true;
@@ -50,7 +58,7 @@ function excludeElement(listOfElements, element, cheerio) {
             retVal = true;
         }
     })
-    return retVal;
+    return retVal; */
 }
 
 async function paginationScrape() {
@@ -131,7 +139,7 @@ async function paginationScrape() {
                 let productImageHash = "none";
                 if (productImageElem && productImageElem.length == 1) {
                     const productImageUrl = productImageElem.attr("src");
-                    const productImageHash = getImageHash(productImageUrl);
+                    productImageHash = getImageHash(productImageUrl);
                 }
 
                 products.push(

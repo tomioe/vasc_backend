@@ -6,5 +6,5 @@
         {vendor: 'asdf', price: '1234', link: 'http'},
         {vendor: 'sadaf', price: '1234', link: 'http'},
     ],
-    image_id: [sha256(image_filename)]
+    imageName: [sha256(image_filename)]
 }
