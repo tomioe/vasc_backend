@@ -7,10 +7,10 @@ const util = require('util')
 const csvParser = require('../parser/parse_csv')
 
 const CONNECTION_URL = "mongodb://127.0.0.1:27017/";
-//const DATABASE_NAME = "vape_scrape";
-const DATABASE_NAME = "vape_scrape_dummy";
-//const COLLECTION_NAME = "products";
-const COLLECTION_NAME = "dummy_data";
+const DATABASE_NAME = "vape_scrape";
+//const DATABASE_NAME = "vape_scrape_dummy";
+const COLLECTION_NAME = "products";
+//const COLLECTION_NAME = "dummy_data";
 var database, collection, sikTable;
 
 // helper function to insert a new product in the DB
@@ -32,8 +32,7 @@ async function insertNewProduct(productObject) {
     }
     await collection.insertOne(newProductObject, (err, res) => {
         if (err) {
-            console.error(err);
-            return;
+            throw(err);
         }
     })
     return productObject;
@@ -41,7 +40,6 @@ async function insertNewProduct(productObject) {
 
 // helper function to update the "prices" object
 function updatePrices(productPrices, newPricesObject) {
-    // console.log("\tAdding new product.")
     let updatedPrices = productPrices;
 
     // Find the index in price array matching the current product's vendor
@@ -70,7 +68,7 @@ module.exports = {
                 }
                 database = client.db(DATABASE_NAME);
                 collection = database.collection(COLLECTION_NAME);
-                console.log("[DB Handler] Connected to `" + DATABASE_NAME + "`!");
+                console.log("[DB Interface] Connected to `" + DATABASE_NAME + "`!");
                 resolve(client);
             });
         })
@@ -117,7 +115,7 @@ module.exports = {
         */
 
         return new Promise((resolve, reject) => {
-            // console.log(`Searching DB for matches...`);
+            console.log(`[DB Interface] 'Add' called, searching for matches...`);
             const productSIK = productObject["sik"];
             const productPriceObject = {
                 vendor: productObject["vendor"],
@@ -132,10 +130,10 @@ module.exports = {
                     )
                     .toArray((err, matchingSIKProduct) => {
                         if (err) throw err;
-                        //console.log(`\tgot ${matchingSIKProduct.length} products`);
                         if (matchingSIKProduct.length == 1) {
                             // console.log("\tScenario 1, We found an item in the database")
                             let databaseUpdate = {};
+                            
                             let foundProduct = matchingSIKProduct[0];
 
                             // Use a helper function to determine the new "prices" object
@@ -152,7 +150,6 @@ module.exports = {
                             // if(sikTable.hasOwnProperty(productSIK)) {
                             //     databaseUpdate["name"] = sikTable[productSIK];
                             // }
-
                             collection.updateOne(
                                 { sik: productSIK },
                                 {
@@ -164,14 +161,15 @@ module.exports = {
                                         console.error(err);
                                         reject(err);
                                     }
-                                    // console.log("\tUpdated product price.")
+                                    console.log(`[DB Interface] Product price updated for "${matchingSIKProduct[0]["name"]}" (sik=${productSIK})`)
                                     resolve(res);
                                 }
-                            )
+                            );
 
                         } else {
                             // console.log("\tScenario 2, No items with SIK in the database")
                             let updatedObject = insertNewProduct(productObject);
+                            console.log(`[DB Interface] Added new product "${productObject["name"]}" (sik=${productSIK})`)
                             resolve(updatedObject);
                         }
                     });
@@ -192,12 +190,13 @@ module.exports = {
                             // TODO: Tune rating threshold
                             if (similarity.bestMatch.rating > 0.8) {
                                 matchInDB = true;
-                                // console.log("\tFound name match with DB item '" + currentProducts[similarity.bestMatchIndex].name + "' and '" + productObject.name + "', updating price.");
+                                console.log("\tFound name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");
                                 let databaseUpdate = {};
                                 let foundProduct = currentProducts[similarity.bestMatchIndex];
                                 // Use helper function to generate the new "prices" object
                                 let newPrices = updatePrices(foundProduct["prices"], productPriceObject);
-                                
+                                databaseUpdate["prices"] = newPrices;
+
                                 // if matching product does not have an image, and new one does, then update with new
                                 // TODO: Move to helper function 
                                 if (foundProduct["imageName"] === "none" && productObject["imageName"] != "none") {
@@ -214,15 +213,16 @@ module.exports = {
                                     },
                                     (err, res) => {
                                         if (err) {
+                                            console.error("[DB Interface] Error during string-match update.")
                                             console.error(err);
                                             return;
                                         }
-                                        // console.log("\tUpdated product price.")
                                     }
                                 )
+                                console.log(`[DB Interface] Product price updated for "${matchingSIKProduct[0]["name"]}".`);
                                 productObject["prices"] = newPrices;
                                 resolve(productObject);
-                            }
+                            };
                             if (matchInDB) return;
                         }
                         // TODO: If no match, but SIK number in scraped data then add by SIK

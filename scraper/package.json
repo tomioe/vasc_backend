@@ -16,5 +16,8 @@
     "cwait": "^1.1.2",
     "file-extension": "^4.0.5",
     "puppeteer": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.1"
   }
 }

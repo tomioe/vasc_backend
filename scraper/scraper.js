@@ -11,13 +11,14 @@ const util = require("util");
 
 const databaseInterface = require("../db/db_interface");
 const IMAGE_STORE_PATH = "../store/";
-const MAX_SIMULTANEOUS_DOWNLOADS = 10;
+const MAX_SIMULTANEOUS_DOWNLOADS = 5;
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
         //"base_url": "https://www.damphuen.dk/e-cigaret?limit=all",  // we can get all the products in a single page
         "base_url": "https://www.damphuen.dk/e-cigaret",
         "init_append": "?p=1",
+        //"init_append": "",
         "page_element": ".pages > ol > li",
         "page_element_exclude": [
             "current",
@@ -26,8 +27,8 @@ const PAGINATION_VAPE_SHOPS = {
         "cat_list_element": ".category-products > .listProduct",
         "cat_link_element": ".listProductContent > .listProductName > a",
         "prod_name_element": ".product-name > *[itemprop='name']",
-        "prod_sik_element": ".product-name > .viewProductSikCon",
         "prod_price_element": ".price.salePrice",
+        "prod_sik_element": ".product-name > .viewProductSikCon",
         "prod_img_element": ".product-image > a > img"
     }
     // TODO: Tanks fra damphuen
@@ -112,13 +113,15 @@ async function paginationScrape() {
         const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
         productResults.forEach( prodRes => {
             const $$ = cheerio.load(prodRes.data);
-            let productPrice =  $$(siteData["prod_price_element"]);
+            let productPrice =  $$(siteData["prod_price_element"]).text().trim();
             if(productPrice.length > 0) {
                 let productName = $$(siteData["prod_name_element"]).text().trim();
                 let productSik = $$(siteData["prod_sik_element"]).text().trim();
                 productSik = sikRe.exec(productSik);
                 // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
+                    productSik = productSik.pop();
+                } else {
                     productSik = "";
                 }
                 let productImageElem = $$(siteData["prod_img_element"]);
@@ -142,33 +145,39 @@ async function paginationScrape() {
             }
         })
     } catch (error) {
-        console.error("[Scraper] Error during product page scrape: " + error);
+        console.error(`[Scraper] Error during product page scrape: ${error}` );
     }
     
     console.log(`[Scraper] Mined ${products.length} products in total.`);
-    console.log(`\tFirst: "${products[0]["name"]}"`);
-    console.log(`\tLast: "${products[products.length-1]["name"]}"`);
+    if(products[0]) {
+        console.log(`\tFirst: "${products[0]["name"]}"`);
+        console.log(`\tLast: "${products[products.length-1]["name"]}"`);
+    }
 
-    databaseInterface
-        .open()
-        .then((client_db) => {
-            products.forEach( item => {
-                //databaseInterface.add(item);
-            });
-            setTimeout( () => {
-                console.log("[Scraper] Closing DB connection.")
-                client_db.close();
-            }, 5000);
-        })
-        .catch( e => {
-            console.error(e);
-        });
+    updateDatabase(products);
 };
+
+async function updateDatabase(products) {
+    try {
+        let databaseClient = await databaseInterface.open();
+        for(const productIndex in products) {
+            let x = products[productIndex];
+            await databaseInterface.add(x);
+        }
+        console.log(`[Scraper] Added ${products.length} to the database.`);
+        setTimeout( () => {
+            console.log("[Scraper] Closing DB connection.")
+            databaseClient.close();
+        }, 1500);
+    } catch (error) {
+        console.error(error);
+    }
+}
 
 function getImageHash(imageUrl) {
     const hashFunction = crypto.createHash('sha256')
     const hashFileName = hashFunction.update(imageUrl).digest("hex");
-    let ext = fileExtension(imageUrl); // use library to determine file extension (defaults to blank)
+    let ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
     const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName + "." + ext);
     const writer = fs.createWriteStream(output_path);
     axios(imageUrl, {
