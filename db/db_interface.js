@@ -84,7 +84,7 @@ module.exports = {
                 .limit(20)
                 .toArray(function (err, result) {
                     if (err) throw reject(err);
-                    console.log(result.length)
+                    //console.log(result.length)
                     resolve(result);
                 });
         })
@@ -188,9 +188,9 @@ module.exports = {
                             let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
                             let matchInDB = false;
                             // TODO: Tune rating threshold
-                            if (similarity.bestMatch.rating > 0.8) {
+                            if (similarity.bestMatch.rating > 0.85) {
                                 matchInDB = true;
-                                console.log("\tFound name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");
+                                console.log("[DB Interface] Found name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");
                                 let databaseUpdate = {};
                                 let foundProduct = currentProducts[similarity.bestMatchIndex];
                                 // Use helper function to generate the new "prices" object
@@ -219,7 +219,7 @@ module.exports = {
                                         }
                                     }
                                 )
-                                console.log(`[DB Interface] Product price updated for "${matchingSIKProduct[0]["name"]}".`);
+                                console.log(`[DB Interface] Product price updated for "${productObject["name"]}".`);
                                 productObject["prices"] = newPrices;
                                 resolve(productObject);
                             };

@@ -9,8 +9,12 @@ const fileExtension = require('file-extension');
 
 const util = require("util");
 
-const databaseInterface = require("../db/db_interface");
-const IMAGE_STORE_PATH = "../store/";
+const __BASE = "/dev/vasc/"
+
+const DB_PATH = path.join(__BASE, "/backend/DB")
+const databaseInterface = require(path.join(DB_PATH, "db_interface"))
+
+const IMAGE_STORE_PATH = path.join(__BASE, "/backend/store")
 const MAX_SIMULTANEOUS_DOWNLOADS = 5;
 
 const PAGINATION_VAPE_SHOPS = {
@@ -95,8 +99,6 @@ async function paginationScrape() {
                 productLinks.push(productLink);
             });
         });
-
-        productLinks = productLinks.slice(200);
     } catch (error) {
         console.error("[Scraper] Error during catalog page scrape: " + error);
     }
