@@ -8,6 +8,7 @@ const body_parser_1 = __importDefault(require("body-parser"));
 const crypto_1 = __importDefault(require("crypto"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
+const util_1 = __importDefault(require("util"));
 const app = express_1.default();
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
@@ -23,6 +24,7 @@ app.get("/search", (req, res) => {
         db_interface
             .search(urlQuery, true)
             .then((items) => {
+            util_1.default.inspect(items);
             res.json(items);
         })
             .catch((e) => {
@@ -60,6 +62,6 @@ app.get("/", (req, res) => {
 // Start the Express server and open database connection.
 app.listen(port, () => {
     db_interface.open();
-    console.log(`[API] Example app listening on port ${port}!`);
+    console.log(`[API] Vape Scrape API listening on port ${port}!`);
 });
 //# sourceMappingURL=server.js.map

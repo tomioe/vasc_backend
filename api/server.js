@@ -6,7 +6,7 @@ import serverCrypto from "crypto";
 import cors from "cors";
 import path from "path";
 
-
+import util from "util";
 
 const app = express();
 app.use(bodyParser.json());
@@ -22,11 +22,14 @@ const db_interface = require(path.join(DB_PATH, "db_interface"))
 
 // Search for a product, with a URL parameter of ?q=
 app.get("/search", (req, res) => {
+    console.log("asdf")
     let urlQuery = req.query.q;
     if(urlQuery) {
         db_interface
             .search(urlQuery, true)
             .then((items: String[]) => {
+                
+                util.inspect(items);
                 res.json(items);
             })
             .catch((e: Error) => {
