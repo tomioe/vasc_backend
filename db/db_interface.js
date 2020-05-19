@@ -83,16 +83,15 @@ module.exports = {
                 )
                 .limit(20)
                 .toArray(function (err, result) {
-                    if (err) throw reject(err);
+                    if (err) reject(err);
                     //console.log(result.length)
                     resolve(result);
                 });
         })
     },
     add: productObject => {
-        // New SIK method:
         /*
-            A product is added...    
+            A product is added and:   
         
             Scenario 1.
                 * It has SIK scraped
@@ -214,9 +213,10 @@ module.exports = {
                                     (err, res) => {
                                         if (err) {
                                             console.error("[DB Interface] Error during string-match update.")
-                                            console.error(err);
-                                            return;
+                                            //console.error(err);
+                                            reject(err);
                                         }
+                                        resolve(res);
                                     }
                                 )
                                 console.log(`[DB Interface] Product price updated for "${productObject["name"]}".`);
