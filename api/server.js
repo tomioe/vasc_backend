@@ -1,19 +1,18 @@
-import  { Request, Response } from "express";
-import express from "express";
+const express =  require("express");
 
-import bodyParser from "body-parser";
-import serverCrypto from "crypto";
-import cors from "cors";
-import path from "path";
+const bodyParser =  require("body-parser");
+const serverCrypto =  require("crypto");
+const cors =  require("cors");
+const path =  require("path");
+const util = require("util");
 
-import util from "util";
 
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
-const port: string = "4000";
+const port = "4000";
 
 
 const BACKEND_BASE = "/dev/vasc/backend"
@@ -22,17 +21,14 @@ const db_interface = require(path.join(DB_PATH, "db_interface"))
 
 // Search for a product, with a URL parameter of ?q=
 app.get("/search", (req, res) => {
-    console.log("asdf")
     let urlQuery = req.query.q;
     if(urlQuery) {
         db_interface
             .search(urlQuery, true)
-            .then((items: String[]) => {
-                
-                util.inspect(items);
+            .then(items => {
                 res.json(items);
             })
-            .catch((e: Error) => {
+            .catch(e => {
                 console.error(e);
                 res.status(500).send("Database error during search!");
             });
@@ -46,10 +42,12 @@ app.get("/product/:id", (req, res) => {
     if(req.params.id) {
         db_interface
             .search(req.params.id, false)
-            .then((items: String[]) => {
-                res.json(items);
+            .then(items => {
+                const k = [{name:'price', price:'12345'}]
+                // res.json(items);
+                res.json(k);
             })
-            .catch((err: Error) => {
+            .catch(err => {
                 console.error(err);
                 res.status(500).send("Database error during product lookup!");
             });
