@@ -41,24 +41,15 @@ const PAGINATION_VAPE_SHOPS = {
 function excludeElement(listOfElements, element, cheerio) {
     const $ = cheerio;
     var retVal = false;
-    // TODO: Change to "some"/"every" - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
-    for(const listElement in listOfElements) {
-        if ($(element).hasClass(exclude)) {
-            return true;
-        } else if($(element).find("a").hasClass(exclude)) {
-            return true;
-        }
-    }
-    return false;
-    /* listOfElements.forEach(exclude => {
+    listOfElements.forEach(exclude => {
         // some sites store it in the "li" element, others in the "a" element
         if ($(element).hasClass(exclude)) {
             retVal = true;
         } else if($(element).find("a").hasClass(exclude)) {
             retVal = true;
         }
-    })
-    return retVal; */
+    });
+    return retVal;
 }
 
 async function paginationScrape() {
@@ -107,6 +98,7 @@ async function paginationScrape() {
                 productLinks.push(productLink);
             });
         });
+        productLinks = productLinks.slice(200);
     } catch (error) {
         console.error("[Scraper] Error during catalog page scrape: " + error);
     }
@@ -127,6 +119,7 @@ async function paginationScrape() {
             if(productPrice.length > 0) {
                 let productName = $$(siteData["prod_name_element"]).text().trim();
                 let productSik = $$(siteData["prod_sik_element"]).text().trim();
+                
                 productSik = sikRe.exec(productSik);
                 // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
@@ -134,8 +127,8 @@ async function paginationScrape() {
                 } else {
                     productSik = "";
                 }
+
                 let productImageElem = $$(siteData["prod_img_element"]);
-                
                 let productImageHash = "none";
                 if (productImageElem && productImageElem.length == 1) {
                     const productImageUrl = productImageElem.attr("src");
@@ -151,9 +144,9 @@ async function paginationScrape() {
                         imageName: productImageHash,
                         vendor: activeSite
                     }
-                )
-            }
-        })
+                );
+            };
+        });
     } catch (error) {
         console.error(`[Scraper] Error during product page scrape: ${error}` );
     }
@@ -185,19 +178,22 @@ async function updateDatabase(products) {
 }
 
 function getImageHash(imageUrl) {
+    const ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
     const hashFunction = crypto.createHash('sha256')
-    const hashFileName = hashFunction.update(imageUrl).digest("hex");
-    let ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
-    const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName + "." + ext);
-    const writer = fs.createWriteStream(output_path);
-    axios(imageUrl, {
-        method: 'GET',
-        responseType: 'stream'
-    }).then( res => {
-        res.data.pipe(writer);
-    }).catch( err => {
-        console.error("error during image download: " + err);
-    })
+    const hashFileName = hashFunction.update(imageUrl).digest("hex") + "." + ext;
+    const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName);
+    if(!fs.existsSync(output_path)) {
+        const writer = fs.createWriteStream(output_path);
+        axios(imageUrl, {
+            method: 'GET',
+            responseType: 'stream'
+        }).then( res => {
+            res.data.pipe(writer);
+        }).catch( err => {
+            console.error("error during image download: " + err);
+        })
+    }
+    
     
     return hashFileName;
 }
@@ -214,7 +210,8 @@ paginationScrape();      // parse pagination and extract products from these [da
 // activePagination(processProducts);   // items are dynamically loaded, and follow pagination afterwards [numeddamp]
 
 
-/* SIK Oversigt:
-    DampHuset: https://www.damphuen.dk/smok-rha85-tfv8-baby-beast-kit [multiple]
-    Damperen: https://www.justvape.dk/produkt/geekvape-aegis-x-200w-tc-mod/
+/* 
+    SIK Oversigt:
+        DampHuset: https://www.damphuen.dk/smok-rha85-tfv8-baby-beast-kit [multiple]
+        Damperen: https://www.justvape.dk/produkt/geekvape-aegis-x-200w-tc-mod/
 */
