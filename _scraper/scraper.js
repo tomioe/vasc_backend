@@ -12,7 +12,7 @@ const util = require("util");
 const DB_PATH = "../_db";
 const databaseInterface = require(path.join(DB_PATH, "db_interface"))
 
-const IMAGE_STORE_PATH = "../store";
+const IMAGE_STORE_PATH = "../_store";
 const MAX_SIMULTANEOUS_DOWNLOADS = 5;
 
 const PAGINATION_VAPE_SHOPS = {
@@ -54,7 +54,7 @@ async function paginationScrape() {
     const activeSite = "damphuen-ecig";
     const siteData = PAGINATION_VAPE_SHOPS[activeSite];
     
-    console.log("[Scraper] Determining catalog links")
+    console.log("[Scraper] Determining catalog link style")
     /* (1) Initial Scrape - Determine catalog pages */
     const initResponse = await axios.get(siteData["base_url"]);
     const initHtml = initResponse.data;
@@ -85,7 +85,7 @@ async function paginationScrape() {
     
     //TODO: What if page shows pagination as "1, 2, 3 ... 10"?
 
-    
+    console.log("[Scraper] Extracting product links from category pages")
     /* (2) From each category page, we must now extract a product link  */
     // first queue up an axios request for each category page
     catPageLinks = Array.from(catPageLinks).map( (catPage) => axios.get(catPage));
@@ -109,7 +109,7 @@ async function paginationScrape() {
     } catch (error) {
         console.error("[Scraper] Error during catalog page scrape: " + error);
     }
-    
+
     /* (3) Using the product link, we now extract the Product Name, SIK ID, Price and Image from each page  */
     // RegEx for SIK ID: /\d{5}-\d{2}-\d{5}/g
     
@@ -117,6 +117,7 @@ async function paginationScrape() {
     // or: https://stackoverflow.com/questions/55374755/node-js-axios-download-file-and-writefile
     let products = []
     let sikRe = /\d{5}-\d{2}-\d{5}/g
+    console.log("[Scraper] Downloading product pages and mining data.")
     try {
         // form a task queue, so that we don't DDoS the server with XXX number of page downloads
         const queue = new TaskQueue(Promise, MAX_SIMULTANEOUS_DOWNLOADS);
@@ -195,15 +196,19 @@ function getImageHash(imageUrl) {
     const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName);
     // TODO: If that file name already exists, generate a new hash 
     if(!fs.existsSync(output_path)) {
-        const writer = fs.createWriteStream(output_path);
-        axios(imageUrl, {
-            method: 'GET',
-            responseType: 'stream'
-        }).then( res => {
-            res.data.pipe(writer);
-        }).catch( err => {
-            console.error("error during image download: " + err);
-        })
+        try {
+            const writer = fs.createWriteStream(output_path);
+            axios(imageUrl, {
+                method: 'GET',
+                responseType: 'stream'
+            }).then( res => {
+                res.data.pipe(writer);
+            }).catch( err => {
+                console.error("error during image download: " + err);
+            })
+        } catch (e) {
+            console.log("[Scraper] I/O Error during Product Image Write: " + e)
+        }
     }
     return hashFileName;
 }
