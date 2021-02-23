@@ -16,7 +16,7 @@ app.use(cors());
 
 const port = "4000";
 
-const BACKEND_BASE = "/dev/vasc/backend"
+const BACKEND_BASE = "../"
 const DB_PATH = path.join(BACKEND_BASE, "DB")
 const db_interface = require(path.join(DB_PATH, "db_interface"))
 
@@ -78,7 +78,7 @@ app.get("/image/:imageName", (req, res) => {
                 res.sendFile(imageName, {root:imagePath});
             }
         } else {
-            console.log("[API] Request for non-existant image.")
+            console.log("[API] Request for non-existent image.")
             res.send("404");
         }
     } else {

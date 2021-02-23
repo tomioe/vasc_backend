@@ -6,12 +6,12 @@ const util = require('util')
 
 const csvParser = require('../parser/parse_csv')
 
-const CONNECTION_URL = "mongodb://127.0.0.1:27017/";
+const CONNECTION_URL = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
 const DATABASE_NAME = "vape_scrape";
 //const DATABASE_NAME = "vape_scrape_dummy";
 const COLLECTION_NAME = "products";
 //const COLLECTION_NAME = "dummy_data";
-const _RATING_THRESHOLD = 0.85;
+const _NAME_MATCH_THRESHOLD = 0.90;
 
 var database, collection, sikTable;
 
@@ -189,7 +189,7 @@ module.exports = {
                             let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
                             let matchInDB = false;
                             // TODO: Tune rating threshold
-                            if (similarity.bestMatch.rating > _RATING_THRESHOLD) {
+                            if (similarity.bestMatch.rating > _NAME_MATCH_THRESHOLD) {
                                 matchInDB = true;
                                 console.log("[DB Interface] Found name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");
                                 let databaseUpdate = {};

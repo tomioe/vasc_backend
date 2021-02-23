@@ -1,4 +1,5 @@
 .vscode/
+env.heroku
 
 scraper/node_modules/
 parser/node_modules/
@@ -8,3 +9,4 @@ db/node_modules/
 parser/run.js
 
 api/dist/
+
