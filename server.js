@@ -14,7 +14,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
-const port = "4000";
+const port = process.env.PORT || "4000";
 
 const BACKEND_BASE = "./"
 const db_interface = require("./_db/db_interface")
