@@ -2,5 +2,4 @@
 env.heroku
 
 node_modules/
-_parser/
-_scraper/
+_store/
