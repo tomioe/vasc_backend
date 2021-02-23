@@ -16,9 +16,8 @@ app.use(cors());
 
 const port = "4000";
 
-const BACKEND_BASE = "../"
-const DB_PATH = path.join(BACKEND_BASE, "DB")
-const db_interface = require(path.join(DB_PATH, "db_interface"))
+const BACKEND_BASE = "./"
+const db_interface = require("./_db/db_interface")
 
 // Search for a product, with a URL parameter of ?q=
 app.get("/search", (req, res) => {
@@ -60,7 +59,7 @@ app.get("/image/:imageName", (req, res) => {
     const imageName = req.params.imageName;
     let width = req.query.w;
     if(imageName) {
-        const imagePath = "../../store/";
+        const imagePath = "./_store/";
         const fullImagePath = path.join(imagePath, imageName);
         if(fs.existsSync(fullImagePath)) {
             if(width) {

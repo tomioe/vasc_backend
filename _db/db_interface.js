@@ -4,7 +4,7 @@ const ObjectId = require("mongodb").ObjectID;
 
 const util = require('util')
 
-const csvParser = require('../parser/parse_csv')
+//const csvParser = require('../parser/parse_csv')
 
 const CONNECTION_URL = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
 const DATABASE_NAME = "vape_scrape";
@@ -62,7 +62,7 @@ function updatePrices(productPrices, newPricesObject) {
 module.exports = {
     open: () => {
         return new Promise((resolve, reject) => {
-            sikTable = csvParser.parseSIK();
+            //sikTable = csvParser.parseSIK();
             MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true }, (error, client) => {
                 if (error) {
                     console.error(error);
