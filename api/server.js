@@ -2,10 +2,12 @@ const express =  require("express");
 
 const bodyParser =  require("body-parser");
 const serverCrypto =  require("crypto");
+const sharp = require('sharp')
 const cors =  require("cors");
 const path =  require("path");
-const util = require("util");
+const fs = require("fs");
 
+const util = require("util");
 
 const app = express();
 app.use(bodyParser.json());
@@ -13,7 +15,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
 const port = "4000";
-
 
 const BACKEND_BASE = "/dev/vasc/backend"
 const DB_PATH = path.join(BACKEND_BASE, "DB")
@@ -43,9 +44,7 @@ app.get("/product/:id", (req, res) => {
         db_interface
             .search(req.params.id, false)
             .then(items => {
-                const k = [{name:'price', price:'12345'}]
-                // res.json(items);
-                res.json(k);
+                res.json(items);
             })
             .catch(err => {
                 console.error(err);
@@ -56,9 +55,41 @@ app.get("/product/:id", (req, res) => {
     }
 });
 
+// Catches requests made to /image/[fileName]?w=[width]
+app.get("/image/:imageName", (req, res) => {
+    const imageName = req.params.imageName;
+    let width = req.query.w;
+    if(imageName) {
+        const imagePath = "../../store/";
+        const fullImagePath = path.join(imagePath, imageName);
+        if(fs.existsSync(fullImagePath)) {
+            if(width) {
+                try {
+                    width = parseInt(width);
+                    if(width <= 0) {
+                        width = 1;
+                    }
+                    sharp(fullImagePath).resize(width).pipe(res);
+                } catch (error) {
+                    console.log("[API] Request for image with invalid width.")
+                    res.send("Invalid width.");
+                }
+            } else {
+                res.sendFile(imageName, {root:imagePath});
+            }
+        } else {
+            console.log("[API] Request for non-existant image.")
+            res.send("404");
+        }
+    } else {
+        res.status(404).send("Invalid image query.");
+    }
+});
+
+
 //Catches requests made to / [root]
 app.get("/", (req, res) => {
-	const hashFunction = serverCrypto.createHash("sha256")
+	const hashFunction = serverCrypto.createHash("sha256");
 	hashFunction.update(new String(new Date().getTime()).concat(port));
 	res.send(hashFunction.digest("hex"));
 });

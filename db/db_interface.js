@@ -11,6 +11,8 @@ const DATABASE_NAME = "vape_scrape";
 //const DATABASE_NAME = "vape_scrape_dummy";
 const COLLECTION_NAME = "products";
 //const COLLECTION_NAME = "dummy_data";
+const _RATING_THRESHOLD = 0.85;
+
 var database, collection, sikTable;
 
 // helper function to insert a new product in the DB
@@ -187,7 +189,7 @@ module.exports = {
                             let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
                             let matchInDB = false;
                             // TODO: Tune rating threshold
-                            if (similarity.bestMatch.rating > 0.85) {
+                            if (similarity.bestMatch.rating > _RATING_THRESHOLD) {
                                 matchInDB = true;
                                 console.log("[DB Interface] Found name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");
                                 let databaseUpdate = {};

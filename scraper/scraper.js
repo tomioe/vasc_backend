@@ -66,6 +66,7 @@ async function paginationScrape() {
     // add the initial page to the set as well
     catPageLinks.add(siteData["base_url"] + siteData["init_append"]);
 
+    // extract the category page links
     const catPageElems = $(siteData["page_element"]);
     catPageElems.each((i, catElem) => {
         const pageLink = $(catElem).find("a");
@@ -86,19 +87,25 @@ async function paginationScrape() {
 
     
     /* (2) From each category page, we must now extract a product link  */
+    // first queue up an axios request for each category page
     catPageLinks = Array.from(catPageLinks).map( (catPage) => axios.get(catPage));
     let productLinks = [];
     try {
+        // start all the axios requests for the category pages
         let catalogResponses = await axios.all(catPageLinks);
         catalogResponses.forEach( catResp => {
             const $$ = cheerio.load(catResp.data);
             const productElems = $$(siteData["cat_list_element"]);
+            // for all the "product" elements on the category page, we now need the link to the product
             productElems.each((i, productElem) => {
                 const productLink = $$(productElem).find(siteData["cat_link_element"]).attr("href");
                 productLinks.push(productLink);
             });
         });
-        productLinks = productLinks.slice(200);
+        // for test purposes, we'll stick to extrating just 200 entries from each site
+        if(productLinks.length > 200) {
+            productLinks = productLinks.slice(200);
+        }
     } catch (error) {
         console.error("[Scraper] Error during catalog page scrape: " + error);
     }
@@ -111,7 +118,9 @@ async function paginationScrape() {
     let products = []
     let sikRe = /\d{5}-\d{2}-\d{5}/g
     try {
+        // form a task queue, so that we don't DDoS the server with XXX number of page downloads
         const queue = new TaskQueue(Promise, MAX_SIMULTANEOUS_DOWNLOADS);
+        // start the task queue, which executes an axios request on all the product links
         const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
         productResults.forEach( prodRes => {
             const $$ = cheerio.load(prodRes.data);
@@ -181,7 +190,10 @@ function getImageHash(imageUrl) {
     const ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
     const hashFunction = crypto.createHash('sha256')
     const hashFileName = hashFunction.update(imageUrl).digest("hex") + "." + ext;
+    
+
     const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName);
+    // TODO: If that file name already exists, generate a new hash 
     if(!fs.existsSync(output_path)) {
         const writer = fs.createWriteStream(output_path);
         axios(imageUrl, {
@@ -193,17 +205,16 @@ function getImageHash(imageUrl) {
             console.error("error during image download: " + err);
         })
     }
-    
-    
     return hashFileName;
 }
 
 paginationScrape();      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
+
+
+// TODO: Figure out which of these scraping methods is the most generic
 // singlePageScrape(processProducts);   // variation of paginationScrape() (or vice-versa) [dansk damp, pink-mule, esug]
 
-
 // jsonScrape(processProducts);         // parse information directly from JSON [1-life]
-
 
 // scrollScrape(processProducts);       // items are loaded when scrolling down [dampexperten] 
 // interactiveScrape(processProducts);  // i.e. click a button to load more [din-ecigaret]
