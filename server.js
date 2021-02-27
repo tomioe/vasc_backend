@@ -66,7 +66,8 @@ app.get("/image/:imageName", (req, res) => {
     if(imageName) {
         // dev_env = "./_store/"
         // prod_env = "/app/_store/"
-        const imagePath = process.env.NODE_ENV==="production" ? "/app/" : "./" + "_store/";
+        const imagePath = (process.env.NODE_ENV==="production" ? "/app/" : "./") +  + "_store/";
+
         const fullImagePath = path.join(imagePath, imageName);
         if(fs.existsSync(fullImagePath)) {
             if(width) {
