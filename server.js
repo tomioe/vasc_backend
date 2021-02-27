@@ -82,7 +82,7 @@ app.get("/image/:imageName", (req, res) => {
                 res.sendFile(imageName, {root:imagePath});
             }
         } else {
-            console.log("[API] Request for non-existent image.")
+            console.log("[API] Request for non-existent image [filepath="+fullImagePath+"].")
             res.send("404");
         }
     } else {

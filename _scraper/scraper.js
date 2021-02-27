@@ -191,7 +191,9 @@ function getImageHash(imageUrl) {
     const ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
     const hashFunction = crypto.createHash('sha256')
     const hashFileName = hashFunction.update(imageUrl).digest("hex") + "." + ext;
-    
+    if(!fs.existsSync(IMAGE_STORE_PATH)) {
+        fs.mkdirSync(IMAGE_STORE_PATH);
+    }
 
     const output_path = path.resolve(IMAGE_STORE_PATH, hashFileName);
     // TODO: If that file name already exists, generate a new hash 
