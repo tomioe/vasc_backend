@@ -142,7 +142,7 @@ async function paginationScrape() {
                 let productImageHash = "none";
                 if (productImageElem && productImageElem.length == 1) {
                     const productImageUrl = productImageElem.attr("src");
-                    productImageHash = getImageHash(productImageUrl);
+                    productImageHash = storeImage(productImageUrl);
                 }
 
                 products.push(
@@ -187,7 +187,7 @@ async function updateDatabase(products) {
     }
 }
 
-function getImageHash(imageUrl) {
+function storeImage(imageUrl) {
     const ext = fileExtension(imageUrl); // use a library to determine file extension (defaults to blank)
     const hashFunction = crypto.createHash('sha256')
     const hashFileName = hashFunction.update(imageUrl).digest("hex") + "." + ext;

@@ -3,7 +3,7 @@ const express =  require("express");
 
 const bodyParser =  require("body-parser");
 const serverCrypto =  require("crypto");
-const Buffer = require('safe-buffer').Buffer
+const saferBuffer = require('safer-buffer').Buffer
 const sharp = require('sharp')
 const cors =  require("cors");
 const path =  require("path");
@@ -21,7 +21,6 @@ app.use(cors());
 
 const port = process.env.PORT || "4000";
 
-const BACKEND_BASE = "./"
 const db_interface = require("./_db/db_interface")
 
 // Search for a product, with a URL parameter of ?q=
@@ -108,7 +107,7 @@ app.get("/click", (req, res) => {
         //console.log("[API] Passed URL was empty, returning!")
         return;
     }
-    const urlBuffer = new Buffer(urlBase64, 'base64');
+    const urlBuffer = saferBuffer.from(urlBase64, 'base64');
     const urlDecoded = urlBuffer.toString();
 
     //console.log("[API] Extracting IP...")
@@ -119,7 +118,6 @@ app.get("/click", (req, res) => {
         "time": new Date()
     }
     //console.log("[API] Done:")
-    console.log(requestUserInformation)
 
     // step 2: async entry into DB, with additional info (datetime + geoloc[?]) [https://rapidapi.com/blog/geolocation-backend-node-express/]
     console.log("[API] URL Decoded, IP address extracted, Entering information into database...")
