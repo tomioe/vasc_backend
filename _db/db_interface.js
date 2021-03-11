@@ -110,7 +110,7 @@ module.exports = {
                 * Look up in the SIK-Register, find 6 matches with 80% match on name
                 * Add to 'match' database
                 ( * Old scenario 3:
-                * , can we get a 80% match on name?
+                * Look up, can we get a 80% match on name?
                 * Yes (over 80%): Same as scenario 1    
                 * No (under 80%): 
                     * Search the whole DB for 80% match on string name:
@@ -128,7 +128,7 @@ module.exports = {
                 link: productObject["link"]
             };
             if (productSIK && productSIK.length > 0) {
-                console.log("[DB] we have a SIK")
+                // console.log("[DB] we have a SIK")
                 collection
                     .find(
                         { "sik": productSIK }
@@ -185,14 +185,27 @@ module.exports = {
                         {},
                         { projection: { _id: 0 } }
                     )
-                    .toArray(function (err, currentProducts) {
+                    .toArray(function (err, allCurrentProducts) {
                         if (err) reject(err);
-                        if (currentProducts.length > 0) {
+                        if (allCurrentProducts.length > 0) {
+                            /*
+                                Step 1. We've extracted allCurrentProducts in DB
+                                Step 1.1. Check if there's a 'link-entry' in comparison DB.
+                                Step 1.2. If yes: great, we got sik!
+                                Step 1.3: But if not:
+                                Step 2. Compre current 'add' object to all products, find top 6 matches
+                                Step 3. Compare this list to SIK register look-up and see if we can get a full match
+                                Step 4. If we get a full match (Rating=1), auto-assign the SIK and make an link-entry in comparison-db  
+                                Step 5. If no full matches, push the 6 matches from SIK and DB into a queue-entry in comparison-db
+                                Step 6. Wait for user to make manual link, converting queue-entry to link-entry
+                            */
+                            // const currentProductNames = currentProducts.map(product => product.name);
+
+
                             // console.log('\tSearching for name match...');
                             let currentProductNames = currentProducts.map(product => product.name);
                             let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
                             let matchInDB = false;
-                            // TODO: Tune rating threshold
                             if (similarity.bestMatch.rating > _NAME_MATCH_THRESHOLD) {
                                 matchInDB = true;
                                 console.log("[DB Interface] Found name match with DB item '" + currentProducts[similarity.bestMatchIndex]["name"] + "' and '" + productObject["name"] + "', updating price.");

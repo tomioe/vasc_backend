@@ -14,6 +14,8 @@ const databaseInterface = require(path.join(DB_PATH, "db_interface"))
 
 const IMAGE_STORE_PATH = "../_store";
 const MAX_SIMULTANEOUS_DOWNLOADS = 5;
+const SIK_REGEXP = /\d{5}-\d{2}-\d{5}/g
+
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
@@ -103,6 +105,7 @@ async function paginationScrape() {
             });
         });
         // for test purposes, we'll stick to extrating just 200 entries from each site
+        productLinks.slice(20);
         if(productLinks.length > 200) {
             productLinks = productLinks.slice(200);
         }
@@ -116,7 +119,6 @@ async function paginationScrape() {
     // rate limit:  https://github.com/axios/axios/issues/1010#issuecomment-326172188
     // or: https://stackoverflow.com/questions/55374755/node-js-axios-download-file-and-writefile
     let products = []
-    let sikRe = /\d{5}-\d{2}-\d{5}/g
     console.log("[Scraper] Downloading product pages and mining data.")
     try {
         // form a task queue, so that we don't DDoS the server with XXX number of page downloads
@@ -130,14 +132,11 @@ async function paginationScrape() {
                 let productName = $$(siteData["prod_name_element"]).text().trim();
                 let productSik = $$(siteData["prod_sik_element"]).text().trim();
                 
-                productSik = sikRe.exec(productSik);
                 // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
-                    productSik = productSik.pop();
-                    console.log(`got sik: ${productSik}`);
+                    productSik = productSik.match(SIK_REGEXP);
                 } else {
                     productSik = "";
-                    console.log(`no sik`);
                 }
 
                 let productImageElem = $$(siteData["prod_img_element"]);
