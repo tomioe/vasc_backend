@@ -41,7 +41,7 @@ async function insertNewProduct(productObject) {
 }
 
 // helper function to update the "prices" object
-function updatePrices(productPrices, newPricesObject) {
+const updatePrices = (productPrices, newPricesObject) => {
     let updatedPrices = productPrices;
 
     // Find the index in price array matching the current product's vendor
@@ -107,12 +107,16 @@ module.exports = {
 
             Scenario 3.
                 * No SIK has been scraped
-                * Look up in the Raw Data (CSV), can we get a 80% match on name?
+                * Look up in the SIK-Register, find 6 matches with 80% match on name
+                * Add to 'match' database
+                ( * Old scenario 3:
+                * , can we get a 80% match on name?
                 * Yes (over 80%): Same as scenario 1    
                 * No (under 80%): 
                     * Search the whole DB for 80% match on string name:
                         * Over 80%: Scenario 1
-                        * Under 80% Scenario 2    
+                        * Under 80% Scenario 2 
+                * )  
         */
 
         return new Promise((resolve, reject) => {
@@ -124,7 +128,7 @@ module.exports = {
                 link: productObject["link"]
             };
             if (productSIK && productSIK.length > 0) {
-                // we have a SIK
+                console.log("[DB] we have a SIK")
                 collection
                     .find(
                         { "sik": productSIK }
@@ -132,10 +136,10 @@ module.exports = {
                     .toArray((err, matchingSIKProduct) => {
                         if (err) throw err;
                         if (matchingSIKProduct.length == 1) {
-                            // console.log("\tScenario 1, We found an item in the database")
+                            console.log("\tScenario 1, We found an item in the database")
                             let databaseUpdate = {};
-                            
                             let foundProduct = matchingSIKProduct[0];
+                            
 
                             // Use a helper function to determine the new "prices" object
                             let oldPrices = foundProduct["prices"];
@@ -168,14 +172,14 @@ module.exports = {
                             );
 
                         } else {
-                            // console.log("\tScenario 2, No items with SIK in the database")
+                            console.log("\tScenario 2, No items with SIK in the database")
                             let updatedObject = insertNewProduct(productObject);
                             console.log(`[DB Interface] Added new product "${productObject["name"]}" (sik=${productSIK})`)
                             resolve(updatedObject);
                         }
                     });
             } else {
-                // console.log("\tNo SIK, follow scenario 3")
+                console.log("[DB] No SIK, follow scenario 3")
                 collection
                     .find(
                         {},

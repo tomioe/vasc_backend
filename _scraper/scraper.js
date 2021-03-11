@@ -134,8 +134,10 @@ async function paginationScrape() {
                 // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
                     productSik = productSik.pop();
+                    console.log(`got sik: ${productSik}`);
                 } else {
                     productSik = "";
+                    console.log(`no sik`);
                 }
 
                 let productImageElem = $$(siteData["prod_img_element"]);
