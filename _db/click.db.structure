@@ -1,0 +1,16 @@
+{
+    ipAddress,
+    sitesClicked:
+        [
+            {
+                site
+                date
+                deviceData
+                geoLocData
+            }
+        ]
+},
+{
+    ipAddress,
+    ...
+}

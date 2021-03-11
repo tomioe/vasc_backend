@@ -29,32 +29,41 @@ module.exports = {
                                         productName,
                                         allProductNames
                                         )
-        let bestMatchList = bestMatches.ratings;
-        bestMatchList.sort( (a,b) => {
-            if (a.rating < b.rating) return 1;
-            if (a.rating > b.rating) return -1;
-            return 0;
-        })
-        if(numberOfMatches<0) {
-            console.log("[SIK] Cannot get matches for negative number!");
+        let bestMatchList = this.formatSimilarityObject(bestMatches, productToSIKMap);
+        if(numberOfMatches <= 0) {
+            console.log("[SIK] Cannot get matches for zero or negative number!");
         } else {
-            if(numberOfMatches>bestMatchList.length) {
+            if(numberOfMatches > bestMatchList.length) {
                 console.log("[SIK] More matches requested than found!");
             } else {
                 // for some reason we get best match at index 0 and index 1,
                 // so we slice one off.
                 // we also need to preincrement because of this
                 bestMatchList = bestMatchList.slice(1,++numberOfMatches);
-                // we need to get the SIK-ID with the matches as well 
-                bestMatchList = bestMatchList.map( (match) => {
-                    return {
-                        'productName': match.target,
-                        'rating': match.rating,
-                        'sikID': productToSIKMap[match.target]
-                    };
-                })
             }
         }
         return bestMatchList;
+    },
+    formatSimilarityObject: (similariyObj, prodSikMap) => {
+        // this method takes the output from a "string-similarity" object,
+        // sorts it, and uses the passed 'prodSikMap' to add the SIK as well
+        if(similariyObj.ratings) {
+            let retList = simObj.ratings;
+            retList.sort( (a,b) => {
+                if (a.rating < b.rating) return 1;
+                if (a.rating > b.rating) return -1;
+                return 0;
+            })
+            retList = retList.map( (match) => {
+                return {
+                    'productName': match.target,
+                    'rating': match.rating,
+                    'sikID': productToSIKMap[match.target]
+                };
+            })
+            return retList;
+        } else {
+            console.log(`[SIK] Invalid similarity object.`);
+        }
     }
 }

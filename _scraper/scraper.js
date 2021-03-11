@@ -105,7 +105,6 @@ async function paginationScrape() {
             });
         });
         // for test purposes, we'll stick to extrating just 200 entries from each site
-        productLinks.slice(20);
         if(productLinks.length > 200) {
             productLinks = productLinks.slice(200);
         }
@@ -123,6 +122,10 @@ async function paginationScrape() {
     try {
         // form a task queue, so that we don't DDoS the server with XXX number of page downloads
         const queue = new TaskQueue(Promise, MAX_SIMULTANEOUS_DOWNLOADS);
+
+        //DEBUG:
+        productLinks.slice(0,20);
+
         // start the task queue, which executes an axios request on all the product links
         const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
         productResults.forEach( prodRes => {

@@ -1,19 +1,22 @@
-const stringSimilarity = require('string-similarity');
+const stringSimilarity = require("string-similarity");
 const MongoClient = require("mongodb").MongoClient;
 const ObjectId = require("mongodb").ObjectID;
 
-const util = require('util')
+const util = require("util")
 
-//const csvParser = require('../parser/parse_csv')
+const sikRegister = require("../_sik-register/sik-register")
 
 const CONNECTION_URL = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
 const DATABASE_NAME = "vape_scrape";
+const PRODUCT_COLLECTION_NAME = "products";
+const CLICK_COLLECTION_NAME = "clicks";
 //const DATABASE_NAME = "vape_scrape_dummy";
-const COLLECTION_NAME = "products";
 //const COLLECTION_NAME = "dummy_data";
-const _NAME_MATCH_THRESHOLD = 0.90;
+const _NAME_MATCH_THRESHOLD = 0.90;     // % certainty before matching a name with another
+const _NAME_SIMILAR_MATCHES = 10;        // Number of matches to compare with
 
-var database, collection, sikTable;
+let database, productCollection, clickCollection;
+
 
 // helper function to insert a new product in the DB
 async function insertNewProduct(productObject) {
@@ -32,7 +35,7 @@ async function insertNewProduct(productObject) {
     if (productObject["sik"]) {
         newProductObject["sik"] = productObject["sik"];
     }
-    await collection.insertOne(newProductObject, (err, res) => {
+    await productCollection.insertOne(newProductObject, (err, res) => {
         if (err) {
             throw(err);
         }
@@ -40,11 +43,14 @@ async function insertNewProduct(productObject) {
     return productObject;
 }
 
-// helper function to update the "prices" object
+// Helper function to update the "prices" object
+// Done by finding the index of the old price and updating it with the new
 const updatePrices = (productPrices, newPricesObject) => {
+    // TODO: What if the "old" prices is less than "new"? 
+
     let updatedPrices = productPrices;
 
-    // Find the index in price array matching the current product's vendor
+    // Find the index in price array matching the current product"s vendor
     let updateIndex = productPrices.findIndex(priceEntry => {
         return priceEntry["vendor"] === newPricesObject["vendor"];
     })
@@ -53,7 +59,7 @@ const updatePrices = (productPrices, newPricesObject) => {
         // Product is present in DB, but lacks the new vendor 
         updatedPrices.push(newPricesObject);
     } else {
-        // Product is present in DB, update the specific vendor's previous price
+        // Product is present in DB, update the specific vendor"s previous price
         updatedPrices[updateIndex] = newPricesObject;
     }
     return updatedPrices;
@@ -62,14 +68,14 @@ const updatePrices = (productPrices, newPricesObject) => {
 module.exports = {
     open: () => {
         return new Promise((resolve, reject) => {
-            //sikTable = csvParser.parseSIK();
             MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true }, (error, client) => {
                 if (error) {
                     console.error(error);
                     reject(error);
                 }
                 database = client.db(DATABASE_NAME);
-                collection = database.collection(COLLECTION_NAME);
+                productCollection = database.collection(PRODUCT_COLLECTION_NAME);
+                clickCollection = database.collection(CLICK_COLLECTION_NAME);
                 console.log("[DB Interface] Connected to `" + DATABASE_NAME + "`!");
                 resolve(client);
             });
@@ -79,7 +85,7 @@ module.exports = {
         return new Promise((resolve, reject) => {
             let findQuery = searchByName ? { "name": { $regex: new RegExp(query, "i") } } : ObjectId(query)
 
-            collection
+            productCollection
                 .find(
                     findQuery
                 )
@@ -97,8 +103,11 @@ module.exports = {
         
             Scenario 1.
                 * It has SIK scraped
-                * An item in the DB has the same SIK
-                => Update the price (either add or update by vendor ID)
+                * Case 1: It has a single SIK
+                    * An item in the DB has the same SIK
+                    => Update the price (either add new price or update vendor"s old price)
+                * Case 2: It has several SIK's
+                    * TODO: Figure this out
             
             Scenario 2. 
                 * It has SIK scraped
@@ -108,7 +117,7 @@ module.exports = {
             Scenario 3.
                 * No SIK has been scraped
                 * Look up in the SIK-Register, find 6 matches with 80% match on name
-                * Add to 'match' database
+                * Add to "match" database
                 ( * Old scenario 3:
                 * Look up, can we get a 80% match on name?
                 * Yes (over 80%): Same as scenario 1    
@@ -120,7 +129,7 @@ module.exports = {
         */
 
         return new Promise((resolve, reject) => {
-            console.log(`[DB Interface] 'Add' called, searching for matches...`);
+            console.log(`[DB Interface] "Add" called, searching for matches...`);
             const productSIK = productObject["sik"];
             const productPriceObject = {
                 vendor: productObject["vendor"],
@@ -129,7 +138,7 @@ module.exports = {
             };
             if (productSIK && productSIK.length > 0) {
                 // console.log("[DB] we have a SIK")
-                collection
+                productCollection
                     .find(
                         { "sik": productSIK }
                     )
@@ -143,6 +152,7 @@ module.exports = {
 
                             // Use a helper function to determine the new "prices" object
                             let oldPrices = foundProduct["prices"];
+
                             databaseUpdate["prices"] = updatePrices(oldPrices, productPriceObject);
 
                             // if matching product does not have an image, and new one does, then update with new
@@ -151,11 +161,11 @@ module.exports = {
                                 databaseUpdate["imageName"] = productObject["imageName"];
                             }
 
-                            // If there's a SIK match, we should use the SIK List's name for the object 
+                            // If there"s a SIK match, we should use the SIK List"s name for the object 
                             // if(sikTable.hasOwnProperty(productSIK)) {
                             //     databaseUpdate["name"] = sikTable[productSIK];
                             // }
-                            collection.updateOne(
+                            productCollection.updateOne(
                                 { sik: productSIK },
                                 {
                                     $set: databaseUpdate,
@@ -179,8 +189,8 @@ module.exports = {
                         }
                     });
             } else {
-                console.log("[DB] No SIK, follow scenario 3")
-                collection
+                // console.log("[DB] No SIK, follow scenario 3")
+                productCollection
                     .find(
                         {},
                         { projection: { _id: 0 } }
@@ -188,21 +198,31 @@ module.exports = {
                     .toArray(function (err, allCurrentProducts) {
                         if (err) reject(err);
                         if (allCurrentProducts.length > 0) {
+                            // **** NEW METHOD ****
                             /*
-                                Step 1. We've extracted allCurrentProducts in DB
-                                Step 1.1. Check if there's a 'link-entry' in comparison DB.
+                                Step 1. We"ve extracted allCurrentProducts in DB
+                                Step 1.1. Check if there"s a "link-entry" in comparison-db.
                                 Step 1.2. If yes: great, we got sik!
                                 Step 1.3: But if not:
-                                Step 2. Compre current 'add' object to all products, find top 6 matches
+                                Step 2. Compre current "add" object to all products, find top 6 matches
                                 Step 3. Compare this list to SIK register look-up and see if we can get a full match
                                 Step 4. If we get a full match (Rating=1), auto-assign the SIK and make an link-entry in comparison-db  
                                 Step 5. If no full matches, push the 6 matches from SIK and DB into a queue-entry in comparison-db
                                 Step 6. Wait for user to make manual link, converting queue-entry to link-entry
                             */
-                            // const currentProductNames = currentProducts.map(product => product.name);
+                            // const currentProductNames = allCurrentProducts.map(product => product.name);
+                            // const currentProductToSik = {};
+                            // allCurrentProducts.forEach( (dbItem) => {
+                            //     const keyProductName = dbItem["name"]
+                            //     currentProductToSik[keyProductName] = dbItem["sik"] 
+                            // });
+                            // const similarProductNames = stringSimilarity(productObject.name, currentProductNames);
+                            // let similarProductNameList = sikRegister.formatSimilarityObject(similarProductNames, currentProductToSik);
+                            // let sikRegisterMatches = sikRegister.findMatches("SMOK - ", _NAME_SIMILAR_MATCHES)
+                            
+                            // **** OLD METHOD ****
 
-
-                            // console.log('\tSearching for name match...');
+                            // console.log("\tSearching for name match...");
                             let currentProductNames = currentProducts.map(product => product.name);
                             let similarity = stringSimilarity.findBestMatch(productObject.name, currentProductNames);
                             let matchInDB = false;
@@ -220,10 +240,10 @@ module.exports = {
                                 if (foundProduct["imageName"] === "none" && productObject["imageName"] != "none") {
                                     databaseUpdate["imageName"] = productObject["imageName"];
                                 }
-                                // update databases' matched product with the updated price list
+                                // update databases" matched product with the updated price list
                                 // TODO: maybe we can do it better?: https://stackoverflow.com/questions/31120111/mongodb-find-and-then-update
                                 // TODO: Check if price is the same? Is update then necessary?
-                                collection.updateOne(
+                                productCollection.updateOne(
                                     { name: currentProducts[similarity.bestMatchIndex].name },
                                     {
                                         $set: databaseUpdate,
@@ -245,12 +265,32 @@ module.exports = {
                             if (matchInDB) return;
                         }
                         // TODO: If no match, but SIK number in scraped data then add by SIK
-                        // either there's no match, or we have no items in DB, either way...
+                        // either there"s no match, or we have no items in DB, either way...
                         // console.log("\tNo item or match in DB, adding new product...")
                         let newProudct = insertNewProduct(productObject);
                         resolve(newProudct);
                     });
             }
+        })
+    },
+    click: (clickObject) => {
+        return new Promise( (resolve, reject) => {
+            const currentIpAddress = clickObject.ipAddress;
+            let newSitesEntry = {
+                "site": clickObject["site"],
+                "date": clickObject["date"],
+                "deviceData": clickObject["deviceData"]
+            }
+            if(clickObject.geoLocationData) {
+                newSitesEntry["geoLocationData"] = clickObject["geoLocationData"];
+            }
+            let x = clickCollection
+                .updateOne(
+                    {"ipAddress": currentIpAddress},
+                    { $push : {sitesClicked: newSitesEntry} },
+                    { upsert: true }
+                )
+            resolve(x)
         })
     }
 };

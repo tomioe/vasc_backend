@@ -1,0 +1,8 @@
+{
+    'name': 'name',
+    'price': 'price',
+    'SIK': 'SIK',
+    'link': 'link',             
+    'imageName': 'imageName',
+    'vendor': 'vendor'
+}

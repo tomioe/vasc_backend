@@ -1,0 +1,16 @@
+add ({
+    productName: 'Smok - 123W'
+    sik: null
+})
+
+dbProducts.stringSim(productName) => 
+[
+    'Smok - 123W', rating: 1, sikID: null 
+    'Smok - 1W', rating: 0.7, sikID: '123123-123123-123123' 
+]
+
+sikRegister.findMatches(productName) => [
+    'Smok - 123W', rating: 1, sikID: '123123-123123-123123' 
+    'Smok - 1W', rating: 0.7, sikID: '123123-123123-123123' 
+    'Smok - H54', rating: 0.4, sikID: '123123-123-123123'
+]
