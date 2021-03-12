@@ -6,7 +6,7 @@
                 site
                 date
                 deviceData
-                geoLocData
+                geoLocationData
             }
         ]
 },
