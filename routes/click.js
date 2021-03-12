@@ -9,7 +9,7 @@ var ipformat = /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/
 let getGeoLoc = (ipAddress) => {
     return new Promise( (resolve, reject) => {
         let ipReg = ipAddress.match(ipformat)[0];
-        if(ipReg === "127.0.0.1") {
+        if(ipReg === "127.0.0.11") {
             console.log(`[API] GeoLoc on localhost, aborting.`);
             reject();
         } else {

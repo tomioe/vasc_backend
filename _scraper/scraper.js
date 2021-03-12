@@ -33,9 +33,11 @@ const PAGINATION_VAPE_SHOPS = {
         "prod_name_element": ".product-name > *[itemprop='name']",
         "prod_price_element": ".price.salePrice",
         "prod_sik_element": ".product-name > .viewProductSikCon",
-        "prod_img_element": ".product-image > a > img"
+        "prod_img_element": ".product-image > a > img",
+        "scrape_images": false
     }
     // TODO: Tanks fra damphuen
+    // TODO: Implement nemsug & dindamp
 };
 
 function excludeElement(listOfElements, element, cheerio) {
@@ -52,27 +54,32 @@ function excludeElement(listOfElements, element, cheerio) {
     return retVal;
 }
 
-async function paginationScrape() {
-    const activeSite = "damphuen-ecig";
-    const siteData = PAGINATION_VAPE_SHOPS[activeSite];
+async function paginationScrape(activeSite) {
+    let siteStructure;
+    try {
+        siteStructure = PAGINATION_VAPE_SHOPS[activeSite];
+    } catch (e) {
+        console.log(`[Scraper] Site '${activeSite}' not defined, exiting...`);
+        return;
+    }
     
     console.log("[Scraper] Determining catalog link style")
     /* (1) Initial Scrape - Determine catalog pages */
-    const initResponse = await axios.get(siteData["base_url"]);
+    const initResponse = await axios.get(siteStructure["base_url"]);
     const initHtml = initResponse.data;
     const $ = cheerio.load(initHtml);
 
     // store the links in a set, incase we get duplicates
     let catPageLinks = new Set();
     // add the initial page to the set as well
-    catPageLinks.add(siteData["base_url"] + siteData["init_append"]);
+    catPageLinks.add(siteStructure["base_url"] + siteStructure["init_append"]);
 
     console.log("[Scraper] Extracting catalog page links")
     // extract the category page links
-    const catPageElems = $(siteData["page_element"]);
+    const catPageElems = $(siteStructure["page_element"]);
     catPageElems.each((i, catElem) => {
         const pageLink = $(catElem).find("a");
-        if(excludeElement(siteData["page_element_exclude"], catElem, $)) {
+        if(excludeElement(siteStructure["page_element_exclude"], catElem, $)) {
             return;
         }
         const pageLinkHref = pageLink.attr("href").trim();
@@ -97,10 +104,10 @@ async function paginationScrape() {
         let catalogResponses = await axios.all(catPageLinks);
         catalogResponses.forEach( catResp => {
             const $$ = cheerio.load(catResp.data);
-            const productElems = $$(siteData["cat_list_element"]);
+            const productElems = $$(siteStructure["cat_list_element"]);
             // for all the "product" elements on the category page, we now need the link to the product
             productElems.each((i, productElem) => {
-                const productLink = $$(productElem).find(siteData["cat_link_element"]).attr("href");
+                const productLink = $$(productElem).find(siteStructure["cat_link_element"]).attr("href");
                 productLinks.push(productLink);
             });
         });
@@ -130,10 +137,10 @@ async function paginationScrape() {
         const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
         productResults.forEach( prodRes => {
             const $$ = cheerio.load(prodRes.data);
-            let productPrice =  $$(siteData["prod_price_element"]).text().trim();
+            let productPrice =  $$(siteStructure["prod_price_element"]).text().trim();
             if(productPrice.length > 0) {
-                let productName = $$(siteData["prod_name_element"]).text().trim();
-                let productSik = $$(siteData["prod_sik_element"]).text().trim();
+                let productName = $$(siteStructure["prod_name_element"]).text().trim();
+                let productSik = $$(siteStructure["prod_sik_element"]).text().trim();
                 
                 // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
@@ -142,11 +149,13 @@ async function paginationScrape() {
                     productSik = "";
                 }
 
-                let productImageElem = $$(siteData["prod_img_element"]);
+                let productImageElem = $$(siteStructure["prod_img_element"]);
                 let productImageHash = "none";
-                if (productImageElem && productImageElem.length == 1) {
-                    const productImageUrl = productImageElem.attr("src");
-                    productImageHash = storeImage(productImageUrl);
+                if(siteStructure["scrape_images"]) {
+                    if (productImageElem && productImageElem.length == 1) {
+                        const productImageUrl = productImageElem.attr("src");
+                        productImageHash = storeImage(productImageUrl);
+                    }
                 }
 
                 products.push(
@@ -219,7 +228,7 @@ function storeImage(imageUrl) {
     return hashFileName;
 }
 
-paginationScrape();      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
+paginationScrape("damphuen-ecig");      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
 
 
 // TODO: Figure out which of these scraping methods is the most generic

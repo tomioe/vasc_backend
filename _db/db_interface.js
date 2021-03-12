@@ -292,5 +292,69 @@ module.exports = {
                 )
             resolve(x)
         })
+    },
+    statsUsers: () => {
+        return new Promise( (resolve, reject) => {
+            let returnStats = [];
+
+            let browserDistribution = {};
+            let countryDistribution = [];
+            let allSiteClicks = [];
+            let totalClicks = {};
+            let uniqueIPs = 0;
+            clickCollection
+                    .find({})
+                    .toArray( (err, allClicksIP) => {
+                        if (err) reject(err);
+                        if (allClicksIP.length > 0) {
+                            allClicksIP.map( (clickEntry) => {
+                                clickEntry["sitesClicked"].map( (siteClickEntry) => {
+                                    allSiteClicks.push(siteClickEntry)
+                                })
+                                uniqueIPs++;
+                            });
+                            allSiteClicks.forEach( (siteClickEntry) => {
+                                const siteUrl = siteClickEntry["site"];
+                                if(totalClicks[siteUrl]) {
+                                    totalClicks[siteUrl] += 1;
+                                } else {
+                                    totalClicks[siteUrl] = 1;
+                                }
+                                const userBrowser = siteClickEntry["deviceData"]["userAgent"];
+                                if(browserDistribution[userBrowser]) {
+                                    browserDistribution[userBrowser] += 1;
+                                } else {
+                                    browserDistribution[userBrowser] = 1;
+                                }
+                                if(siteClickEntry["geoLocationData"]) {
+                                    const userGeoLocData = siteClickEntry["geoLocationData"]["country"];
+                                    countryDistribution.push(userGeoLocData);
+                                }
+                                returnStats["uniqueIPs"] = uniqueIPs;
+                                returnStats["totalClicks"] = allSiteClicks.length;
+                                returnStats["allClicks"] = totalClicks;
+                                returnStats["browserDistribution"] = browserDistribution;
+                                returnStats["countryDistribution"] = countryDistribution;
+                                resolve(returnStats);
+                            })
+                    }
+                });
+                    
+
+            
+        });
+    },
+    statsProducts: () => {
+        return new Promise( (resolve, reject) => {
+            let returnStats = [];
+            let productCount = 0;
+            let lastScrapeDate = 0;
+            
+            productCount = productCollection.find({}).count();
+
+            returnStats["productCount"] = productCount;
+            returnStats["lastScrapeDate"] = lastScrapeDate;
+            resolve(returnStats);
+        });
     }
 };

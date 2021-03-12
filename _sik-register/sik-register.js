@@ -8,6 +8,7 @@ const SIK_STRUCTURE = {
         sikID: "produkt_id",
         prodName: "produkt_mrke_produkt_navn"
 };
+
 let allProductNames;
 let productToSIKMap = {};
 if(SIK_OBJECT_FULL[0][SIK_STRUCTURE.prodName]) {
@@ -18,10 +19,8 @@ if(SIK_OBJECT_FULL[0][SIK_STRUCTURE.prodName]) {
         productToSIKMap[key] = item[SIK_STRUCTURE.sikID]
     })
 } else {
-    console.log(`unable to load SIK register`);
+    console.log(`[SIK] Unable to load SIK register.`);
 }
-
-
 
 module.exports = {
     findMatches: (productName, numberOfMatches) => {
@@ -58,7 +57,7 @@ module.exports = {
                 return {
                     'productName': match.target,
                     'rating': match.rating,
-                    'sikID': productToSIKMap[match.target]
+                    'sikID': prodSikMap[match.target]
                 };
             })
             return retList;
