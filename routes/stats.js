@@ -23,9 +23,21 @@ router.get("/stats/:type", (req, res) => {
             .catch( (e) => {
                 console.error(e);
                 res.status(500);
-                res.end("Database error!")
+                res.end("Database error on 'stats/users'!")
             })
-
+    } else if(statType == "products") {
+        req.db_interface
+            .statsProducts()
+            .then( (result) => {
+                res.json(result)
+            })
+            .catch( (e) => {
+                console.error(e);
+                res.status(500);
+                res.end("Database error on 'stats/products'!")
+            })
+    } else {
+        res.status(200).end();
     }
 })
 

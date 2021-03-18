@@ -200,16 +200,36 @@ module.exports = {
                         if (allCurrentProducts.length > 0) {
                             // **** NEW METHOD ****
                             /*
-                                Step 1. We"ve extracted allCurrentProducts in DB
-                                Step 1.1. Check if there"s a "link-entry" in comparison-db.
-                                Step 1.2. If yes: great, we got sik!
-                                Step 1.3: But if not:
+                                Step 1. We've extracted allCurrentProducts in DB
+                                Step 1.1. Check if there's a "link-entry" in comparison-db.
+                                Step 1.2.   If yes: great, we got sik!
+                                Step 1.3:   But if not:
                                 Step 2. Compre current "add" object to all products, find top 6 matches
-                                Step 3. Compare this list to SIK register look-up and see if we can get a full match
-                                Step 4. If we get a full match (Rating=1), auto-assign the SIK and make an link-entry in comparison-db  
-                                Step 5. If no full matches, push the 6 matches from SIK and DB into a queue-entry in comparison-db
-                                Step 6. Wait for user to make manual link, converting queue-entry to link-entry
+                                Step 2.1.   If there's 100% match in name, we got a sik! Make a "link-entry"
+                                Step 2.2.   If not, add this to queue-entry in comparison-db
+                                Step 3. Compre current "add" object to SIK register look-up
+                                Step 3.1    If we get a 100% match, we got a sik! Make a "link-entry"
+                                Step 3.2    If not, add this to queue-entry in comparison-db
+                                Step 4. Wait for user to make manual link
                             */
+                           /*
+                                queueEntry:
+                                    {
+                                        productName,
+                                        productLink,
+                                        dbMatches: [ {productName, productLink, productSik},.. ],
+                                        registerMatches: [ {productName, productSik} ]
+                                    }
+
+                                linkEntry:
+                                    {
+                                        scrapedName,        // formerly queueEntry.productName
+                                        matchedName,        // formerly dbMatches.productName / registerMatches.productName
+                                        (matchedSik),       // matchedSik not applicable in cases of accessories (i.e. no SIK)
+                                        matchedDate,       
+                                        matchSource         // [ db/register/manual ]
+                                    }
+                           */
                             // const currentProductNames = allCurrentProducts.map(product => product.name);
                             // const currentProductToSik = {};
                             // allCurrentProducts.forEach( (dbItem) => {
@@ -347,14 +367,16 @@ module.exports = {
     },
     statsProducts: () => {
         return new Promise( (resolve, reject) => {
-            let returnStats = [];
+            let returnStats = {};
             let productCount = 0;
             let lastScrapeDate = 0;
-            
-            returnStats["productCount"] = productCollection.find({}).count();
-
-            returnStats["lastScrapeDate"] = lastScrapeDate;
-            resolve(returnStats);
+            productCollection.count({}, (err, cnt) => {
+                if(err || !cnt)
+                    reject(err);
+                returnStats["productCount"] = cnt;
+                returnStats["lastScrapeDate"] = lastScrapeDate;
+                resolve(returnStats);
+            });
         });
     }
 };
