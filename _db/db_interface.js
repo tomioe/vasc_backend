@@ -288,14 +288,18 @@ module.exports = {
                 .updateOne(
                     {"ipAddress": currentIpAddress},
                     { $push : {sitesClicked: newSitesEntry} },
-                    { upsert: true }
+                    { upsert: true },
+                    function(err, doc) {
+                        console.log(`[DB Interface] Error while inserting 'click' entry`);
+                        reject(err);
+                    }
                 )
-            resolve(x)
+            resolve(x);
         })
     },
     statsUsers: () => {
         return new Promise( (resolve, reject) => {
-            let returnStats = [];
+            let returnStats = {};
 
             let browserDistribution = {};
             let countryDistribution = [];
@@ -313,14 +317,14 @@ module.exports = {
                                 })
                                 uniqueIPs++;
                             });
-                            allSiteClicks.forEach( (siteClickEntry) => {
+                            allSiteClicks.map( (siteClickEntry) => {
                                 const siteUrl = siteClickEntry["site"];
                                 if(totalClicks[siteUrl]) {
                                     totalClicks[siteUrl] += 1;
                                 } else {
                                     totalClicks[siteUrl] = 1;
                                 }
-                                const userBrowser = siteClickEntry["deviceData"]["userAgent"];
+                                const userBrowser = siteClickEntry["deviceData"]["userAgent"] || siteClickEntry["deviceData"]["ua"];
                                 if(browserDistribution[userBrowser]) {
                                     browserDistribution[userBrowser] += 1;
                                 } else {
@@ -339,9 +343,6 @@ module.exports = {
                             })
                     }
                 });
-                    
-
-            
         });
     },
     statsProducts: () => {
@@ -350,9 +351,8 @@ module.exports = {
             let productCount = 0;
             let lastScrapeDate = 0;
             
-            productCount = productCollection.find({}).count();
+            returnStats["productCount"] = productCollection.find({}).count();
 
-            returnStats["productCount"] = productCount;
             returnStats["lastScrapeDate"] = lastScrapeDate;
             resolve(returnStats);
         });

@@ -40,6 +40,11 @@ app.get("/product/:id", (req, res, next) => {
     next();
 }, productRoute);
 
+const statsRoute = require("./routes/stats");
+app.get("/stats/:type", (req, res, next) => {
+    req.db_interface = db_interface;
+    next();
+}, statsRoute);
 
 // Start the Express server and open database connection.
 app.listen(port, () => {
