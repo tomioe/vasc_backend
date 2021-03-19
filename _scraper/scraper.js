@@ -247,7 +247,7 @@ async function insertMetaData(metaObject) {
             databaseClient.close();
         }, 1500);
     } catch (exception) {
-
+        console.error("error during meta")
     }
 }
 

@@ -364,8 +364,11 @@ module.exports = {
                     { $push: { sitesClicked: newSitesEntry } },
                     { upsert: true },
                     function (err, doc) {
-                        console.log(`[DB Interface] Error while inserting 'click' entry`);
-                        reject(err);
+                        if(err) {
+                            console.log(`[DB Interface] Error while inserting 'click' entry`);
+                            reject(err);
+                        }
+                        resolve(doc);
                     }
                 )
             resolve(x);
@@ -442,5 +445,10 @@ module.exports = {
             });
         });
     },
-   
+    statsMeta: () => {
+        return new Promise((resolve, reject) => {
+            // https://www.tutorialspoint.com/mongodb-query-to-find-last-object-in-collection
+            // 
+        });
+    }
 };
