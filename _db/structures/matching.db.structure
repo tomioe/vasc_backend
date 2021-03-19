@@ -1,0 +1,16 @@
+queueEntry:
+    {
+        productName,
+        productLink,
+        dbMatches: [ {productName, productLink, productSik},.. ],
+        registerMatches: [ {productName, productSik} ]
+    }
+
+linkEntry:
+    {
+        scrapedName,        // formerly queueEntry.productName
+        matchedName,        // formerly dbMatches.productName / registerMatches.productName
+        (matchedSik),       // matchedSik not applicable in cases of accessories (i.e. no SIK)
+        matchedDate,       
+        matchSource         // [ db/register/manual ]
+    }

@@ -1,0 +1,6 @@
+metaObject: 
+    {
+        activeSite,
+        elementsScraped,   
+        scrapeDate
+    }
