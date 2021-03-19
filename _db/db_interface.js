@@ -7,24 +7,41 @@ const util = require("util")
 const sikRegister = require("../_sik-register/sik-register")
 
 
+let CONNECTION_URL,
+    DATABASE_NAME,
+    COLLECTION_CLICK,
+    COLLECTION_PRODUCT,
+    COLLECTION_MATCHING_QUEUE,
+    COLLECTION_MATCHING_LINK,
+    COLLECTION_METADATA 
 
-const CONNECTION_URL = "mongodb://127.0.0.1:27017/";
-const DATABASE_NAME = "vape_scrape_dummy";
-const COLLECTION_CLICK = "dummy_clicks";
-const COLLECTION_PRODUCT = "dummy_products";
-const COLLECTION_MATCHING_QUEUE = "dummy_matching_queue";
-const COLLECTION_MATCHING_LINK = "dummy_matching_link";
-
-// const CONNECTION_URL = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
-// const DATABASE_NAME = "vape_scrape";
-// const PRODUCT_COLLECTION_NAME = "products";
-// const CLICK_COLLECTION_NAME = "clicks";
-// const MATCHING_COLLECTION_NAME = "matching";
+if(process.env.MONGODB_URI) {
+    CONNECTION_URL = process.env.MONGODB_URI;
+    DATABASE_NAME = "vape_scrape";
+    COLLECTION_CLICK = "clicks";
+    COLLECTION_PRODUCT = "products";
+    COLLECTION_MATCHING_QUEUE = "matching_queue";
+    COLLECTION_MATCHING_LINK = "matching_link";
+    COLLECTION_METADATA = "meta_data"
+} else {
+    CONNECTION_URL = "mongodb://127.0.0.1:27017/";
+    DATABASE_NAME = "vape_scrape_dummy";
+    COLLECTION_CLICK = "dummy_clicks";
+    COLLECTION_PRODUCT = "dummy_products";
+    COLLECTION_MATCHING_QUEUE = "dummy_matching_queue";
+    COLLECTION_MATCHING_LINK = "dummy_matching_link";
+    COLLECTION_METADATA = "dummy_meta_data"
+}
 
 const _NAME_MATCH_THRESHOLD = 0.90;     // % certainty before matching a name with another
 const _NAME_SIMILAR_MATCHES = 6;        // Number of matches to compare with
 
-let database, productCollection, clickCollection, matchingQueueCollection, matchingLinkCollection;
+let database, 
+    productCollection,
+    clickCollection,
+    matchingQueueCollection,
+    matchingLinkCollection,
+    metaCollection;
 
 
 // helper function to insert a new product in the DB
@@ -109,6 +126,8 @@ module.exports = {
                 matchingLinkCollection = database.collection(COLLECTION_MATCHING_LINK);
                 productCollection = database.collection(COLLECTION_PRODUCT);
                 clickCollection = database.collection(COLLECTION_CLICK);
+
+                metaCollection = database.collection(COLLECTION_METADATA);
 
                 // set the matching queue and link to only accept unique entries 
                 matchingQueueCollection.createIndex({ "productName": 1 }, { unique: true });
@@ -352,6 +371,16 @@ module.exports = {
             resolve(x);
         })
     },
+    addMeta: metaObject => {
+        return new Promise( (resolve, reject) => {
+            metaCollection.insertOne( {metaObject} , (err, res) => {
+                if (err) {
+                    throw (err);
+                }
+                resolve(res);
+            })
+        })
+    },
     statsUsers: () => {
         return new Promise((resolve, reject) => {
             let returnStats = {};
@@ -413,9 +442,5 @@ module.exports = {
             });
         });
     },
-    addMeta: metaObject => {
-        return new Promise( (resolve, reject) => {
-            
-        })
-    }
+   
 };

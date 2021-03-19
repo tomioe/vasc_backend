@@ -16,6 +16,11 @@ const IMAGE_STORE_PATH = "../_store";
 const MAX_SIMULTANEOUS_DOWNLOADS = 5;
 const SIK_REGEXP = /\d{5}-\d{2}-\d{5}/g
 
+/**
+ * TODO:
+ *      * Implement so that BASE_URL can be an array of pages (allows for different categories)
+ *      * 
+ */
 
 const PAGINATION_VAPE_SHOPS = {
     "damphuen-ecig": {
@@ -35,25 +40,44 @@ const PAGINATION_VAPE_SHOPS = {
         "prod_sik_element": ".product-name > .viewProductSikCon",
         "prod_img_element": ".product-image > a > img",
         "scrape_images": false
+    },
+    "dindamp-ecig": {
+        "base_url": "https://dindamp.dk/da/452-e-cigaretter",
+        "init_append": "",
+        "page_element": ".pagination > .row > .col-12 > ul > li",
+        "page_element_exclude": [
+            "next",
+            "previous"
+        ],
+        "cat_list_element": ".product-list > .products > .product-miniature > .product-container",
+        "cat_link_element": ".second-block > .product-name > a",
+        "prod_name_element": ".product-right-content >  *[itemprop='name']",
+        "prod_price_element": ".price.product-price",
+        "prod_sik_element": "",
+        "prod_img_element": "",
+        "scrape_images": false
     }
-    // TODO: Tanks fra damphuen
-    // TODO: Implement nemsug & dindamp
+    // TODO: Implement nemsug
 };
 
-function excludeElement(listOfElements, element, cheerio) {
-    const $ = cheerio;
-    var retVal = false;
-    listOfElements.forEach(exclude => {
-        // some sites store it in the "li" element, others in the "a" element
-        if ($(element).hasClass(exclude)) {
-            retVal = true;
-        } else if($(element).find("a").hasClass(exclude)) {
-            retVal = true;
-        }
-    });
-    return retVal;
-}
 
+// TODO: Figure out which of these scraping methods is the most generic
+// singlePageScrape(processProducts);   // variation of paginationScrape() (or vice-versa) [dansk damp, pink-mule, esug]
+
+// jsonScrape(processProducts);         // parse information directly from JSON [1-life]
+
+// scrollScrape(processProducts);       // items are loaded when scrolling down [dampexperten] 
+// interactiveScrape(processProducts);  // i.e. click a button to load more [din-ecigaret]
+// activePagination(processProducts);   // items are dynamically loaded, and follow pagination afterwards [numeddamp]
+
+
+/* 
+    SIK Oversigt:
+        DampHuset: https://www.damphuen.dk/smok-rha85-tfv8-baby-beast-kit [multiple]
+        Damperen: https://www.justvape.dk/produkt/geekvape-aegis-x-200w-tc-mod/
+*/
+
+paginationScrape("dindamp-ecig");      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
 async function paginationScrape(activeSite) {
     let siteStructure;
     try {
@@ -91,14 +115,14 @@ async function paginationScrape(activeSite) {
             }
         }
     });
-    
     //TODO: What if page shows pagination as "1, 2, 3 ... 10"?
-
+    
     console.log("[Scraper] Extracting product links from category pages")
     /* (2) From each category page, we must now extract a product link  */
     // first queue up an axios request for each category page
     catPageLinks = Array.from(catPageLinks).map( (catPage) => axios.get(catPage));
-    let productLinks = [];
+    console.log(`[Scraper] Got ${catPageLinks.length} category pages.`);
+    let productLinks = new Set();
     try {
         // start all the axios requests for the category pages
         let catalogResponses = await axios.all(catPageLinks);
@@ -108,16 +132,19 @@ async function paginationScrape(activeSite) {
             // for all the "product" elements on the category page, we now need the link to the product
             productElems.each((i, productElem) => {
                 const productLink = $$(productElem).find(siteStructure["cat_link_element"]).attr("href");
-                productLinks.push(productLink);
+                // productLinks.push(productLink);
+                productLinks.add(productLink)
             });
         });
-        // for test purposes, we'll stick to extrating just 200 entries from each site
-        if(productLinks.length > 200) {
-            productLinks = productLinks.slice(200);
-        }
     } catch (error) {
         console.error("[Scraper] Error during catalog page scrape: " + error);
     }
+    
+    productLinks = Array.from(productLinks);
+    console.log(`[Scraper] Got ${productLinks.length} product pages.`);
+
+    // TEST:
+    //productLinks = productLinks.slice(0,40);
 
     /* (3) Using the product link, we now extract the Product Name, SIK ID, Price and Image from each page  */
     // RegEx for SIK ID: /\d{5}-\d{2}-\d{5}/g
@@ -125,26 +152,31 @@ async function paginationScrape(activeSite) {
     // rate limit:  https://github.com/axios/axios/issues/1010#issuecomment-326172188
     // or: https://stackoverflow.com/questions/55374755/node-js-axios-download-file-and-writefile
     let products = []
-    console.log("[Scraper] Downloading product pages and mining data.")
+    process.stdout.write("[Scraper] Downloading product pages and mining data")
     try {
-        // form a task queue, so that we don't DDoS the server with XXX number of page downloads
+        // form a task queue so that we don't DDoS the server, limiting to XXX number of page downloads
         const queue = new TaskQueue(Promise, MAX_SIMULTANEOUS_DOWNLOADS);
-
-        //DEBUG:
-        productLinks.slice(0,20);
 
         // start the task queue, which executes an axios request on all the product links
         const productResults = await Promise.all(productLinks.map(queue.wrap(async url => await axios.get(url))));
-        productResults.forEach( prodRes => {
-            const $$ = cheerio.load(prodRes.data);
+        productResults.forEach( productPageResult => {
+            const $$ = cheerio.load(productPageResult.data);
             let productPrice =  $$(siteStructure["prod_price_element"]).text().trim();
             if(productPrice.length > 0) {
                 let productName = $$(siteStructure["prod_name_element"]).text().trim();
                 let productSik = $$(siteStructure["prod_sik_element"]).text().trim();
                 
-                // Ignore if more than one SIK on a page
                 if(productSik && productSik.length != 1){
-                    productSik = productSik.match(SIK_REGEXP);
+                    try {
+                        // TODO: Figure out what to do if there's several matches!
+                        productSik = productSik.match(SIK_REGEXP); // will return array of matches
+                        if(productSik.length === 1) {
+                            productSik = productSik[0];
+                        }
+                    } catch(err) {
+                        console.error("error during SIK regex match.")
+                        productSik = "";
+                    }
                 } else {
                     productSik = "";
                 }
@@ -157,30 +189,36 @@ async function paginationScrape(activeSite) {
                         productImageHash = storeImage(productImageUrl);
                     }
                 }
-
+                
                 products.push(
                     {
                         name: productName,
                         price: productPrice,
                         sik: productSik,
-                        link: prodRes.config.url,
+                        link: productPageResult.config.url,
                         imageName: productImageHash,
                         vendor: activeSite
                     }
                 );
-            };
+            }
         });
     } catch (error) {
         console.error(`[Scraper] Error during product page scrape: ${error}` );
     }
-    
-    console.log(`[Scraper] Mined ${products.length} products in total.`);
+    console.log(`\n[Scraper] Mined ${products.length} products in total.`);
     if(products[0]) {
         console.log(`\tFirst: "${products[0]["name"]}"`);
         console.log(`\tLast: "${products[products.length-1]["name"]}"`);
     }
 
-    updateDatabase(products);
+    await updateDatabase(products);
+    const metaData = {
+        "activeSite": activeSite,
+        "productsScraped": products.length,
+        "scrapeDate": new Date()
+    }
+    insertMetaData(metaData);
+
 };
 
 async function updateDatabase(products) {
@@ -198,6 +236,33 @@ async function updateDatabase(products) {
     } catch (error) {
         console.error(error);
     }
+}
+
+async function insertMetaData(metaObject) {
+    try {
+        const databaseClient = await databaseInterface.open();
+        databaseInterface.addMeta(metaObject);
+        setTimeout( () => {
+            console.log("[Scraper] Closing DB connection.")
+            databaseClient.close();
+        }, 1500);
+    } catch (exception) {
+
+    }
+}
+
+function excludeElement(listOfElements, element, cheerio) {
+    const $ = cheerio;
+    var retVal = false;
+    listOfElements.forEach(exclude => {
+        // some sites store it in the "li" element, others in the "a" element
+        if ($(element).hasClass(exclude)) {
+            retVal = true;
+        } else if($(element).find("a").hasClass(exclude)) {
+            retVal = true;
+        }
+    });
+    return retVal;
 }
 
 function storeImage(imageUrl) {
@@ -219,7 +284,7 @@ function storeImage(imageUrl) {
             }).then( res => {
                 res.data.pipe(writer);
             }).catch( err => {
-                console.error("error during image download: " + err);
+                console.error("[Scraper] Error during image download: " + err);
             })
         } catch (e) {
             console.log("[Scraper] I/O Error during Product Image Write: " + e)
@@ -228,21 +293,5 @@ function storeImage(imageUrl) {
     return hashFileName;
 }
 
-paginationScrape("damphuen-ecig");      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
 
 
-// TODO: Figure out which of these scraping methods is the most generic
-// singlePageScrape(processProducts);   // variation of paginationScrape() (or vice-versa) [dansk damp, pink-mule, esug]
-
-// jsonScrape(processProducts);         // parse information directly from JSON [1-life]
-
-// scrollScrape(processProducts);       // items are loaded when scrolling down [dampexperten] 
-// interactiveScrape(processProducts);  // i.e. click a button to load more [din-ecigaret]
-// activePagination(processProducts);   // items are dynamically loaded, and follow pagination afterwards [numeddamp]
-
-
-/* 
-    SIK Oversigt:
-        DampHuset: https://www.damphuen.dk/smok-rha85-tfv8-baby-beast-kit [multiple]
-        Damperen: https://www.justvape.dk/produkt/geekvape-aegis-x-200w-tc-mod/
-*/
