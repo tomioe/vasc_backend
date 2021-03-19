@@ -358,7 +358,7 @@ module.exports = {
             if (clickObject.geoLocationData) {
                 newSitesEntry["geoLocationData"] = clickObject["geoLocationData"];
             }
-            let x = clickCollection
+            clickCollection
                 .updateOne(
                     { "ipAddress": currentIpAddress },
                     { $push: { sitesClicked: newSitesEntry } },
@@ -371,14 +371,13 @@ module.exports = {
                         resolve(doc);
                     }
                 )
-            resolve(x);
         })
     },
     addMeta: metaObject => {
         return new Promise( (resolve, reject) => {
             metaCollection.insertOne( {metaObject} , (err, res) => {
                 if (err) {
-                    throw (err);
+                    reject(err);
                 }
                 resolve(res);
             })
@@ -447,8 +446,7 @@ module.exports = {
     },
     statsMeta: () => {
         return new Promise((resolve, reject) => {
-            // https://www.tutorialspoint.com/mongodb-query-to-find-last-object-in-collection
-            // 
+            resolve(metaCollection.find().sort({_id:-1}).limit(1))
         });
     }
 };

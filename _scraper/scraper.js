@@ -77,7 +77,7 @@ const PAGINATION_VAPE_SHOPS = {
         Damperen: https://www.justvape.dk/produkt/geekvape-aegis-x-200w-tc-mod/
 */
 
-paginationScrape("dindamp-ecig");      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
+paginationScrape("damphuen-ecig");      // parse pagination and extract products from these [damphuen, justvape, damperen, smoke-it(using 200 products pr page in url), eclshop (similar to prev), pandacig]
 async function paginationScrape(activeSite) {
     let siteStructure;
     try {
