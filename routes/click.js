@@ -19,7 +19,7 @@ let getGeoLoc = (ipAddress) => {
             });
 
             req.headers({
-                "x-rapidapi-key": "c76782eeb7msh4f6545e0bf16bcbp1712d1jsndaa24a81f157",
+                "x-rapidapi-key": "",
                 "x-rapidapi-host": "ip-geo-location.p.rapidapi.com",
                 "useQueryString": true
             });
